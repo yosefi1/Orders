@@ -63,7 +63,7 @@ export default function Cart() {
       // Send confirmation email
       if (customerEmail.trim()) {
         try {
-          await fetch('/api/orders/send-confirmation', {
+          const emailResponse = await fetch('/api/orders/send-confirmation', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -72,6 +72,11 @@ export default function Cart() {
               customerName: customerName.trim(),
             }),
           });
+          const emailResult = await emailResponse.json();
+          console.log('Email send result:', emailResult);
+          if (!emailResponse.ok) {
+            console.error('Email send failed:', emailResult);
+          }
         } catch (emailError) {
           console.error('Failed to send confirmation email:', emailError);
           // Don't fail the order if email fails

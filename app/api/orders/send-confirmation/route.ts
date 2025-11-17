@@ -7,7 +7,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { orderId, customerEmail, customerName } = body;
 
+    console.log('Send confirmation email request:', { orderId, customerEmail, customerName });
+
     if (!customerEmail) {
+      console.log('No email provided, skipping email');
       return NextResponse.json({ success: true, message: 'No email provided, skipping email' });
     }
 
@@ -89,11 +92,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'SMTP_HOST not configured' });
     }
 
+    console.log('SMTP Config:', {
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      hasUser: !!process.env.SMTP_USER,
+      hasPassword: !!process.env.SMTP_PASSWORD,
+      emailFrom: process.env.EMAIL_FROM,
+    });
+
     // Create SMTP transporter (Intel SMTP compatible)
     const transporterConfig: any = {
       host: process.env.SMTP_HOST || 'sc-out.intel.com',
       port: parseInt(process.env.SMTP_PORT || '25'),
       secure: false, // true for 465, false for other ports
+      tls: {
+        rejectUnauthorized: false, // For internal SMTP servers
+      },
     };
 
     // Add auth only if SMTP_USER is provided (Intel SMTP might not need auth)
@@ -106,10 +120,28 @@ export async function POST(request: NextRequest) {
 
     const transporter = nodemailer.createTransport(transporterConfig);
 
+    // Verify connection
+    try {
+      await transporter.verify();
+      console.log('SMTP connection verified');
+    } catch (verifyError: any) {
+      console.error('SMTP verification failed:', verifyError);
+      return NextResponse.json({ 
+        success: false, 
+        error: `SMTP verification failed: ${verifyError.message}` 
+      }, { status: 500 });
+    }
+
     // Determine from address
     const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
 
-    await transporter.sendMail({
+    console.log('Sending email:', {
+      from: fromAddress,
+      to: customerEmail,
+      subject: `הזמנה התקבלה - ${orderId.slice(0, 8)}`,
+    });
+
+    const mailResult = await transporter.sendMail({
       from: fromAddress,
       to: customerEmail,
       subject: `הזמנה התקבלה - ${orderId.slice(0, 8)}`,
@@ -117,8 +149,12 @@ export async function POST(request: NextRequest) {
       text: `הזמנה התקבלה בהצלחה! מספר הזמנה: ${orderId.slice(0, 8)}. סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`,
     });
 
-    console.log('Confirmation email sent successfully to:', customerEmail);
-    return NextResponse.json({ success: true });
+    console.log('Confirmation email sent successfully:', {
+      messageId: mailResult.messageId,
+      to: customerEmail,
+      response: mailResult.response,
+    });
+    return NextResponse.json({ success: true, messageId: mailResult.messageId });
   } catch (error: any) {
     console.error('Error sending confirmation email:', error);
     // Don't fail the order if email fails

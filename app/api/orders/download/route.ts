@@ -106,7 +106,7 @@ function generateExcel(orders: any[]) {
   const workbook = XLSX.utils.book_new();
   
   const worksheetData = [
-    ['מספר הזמנה', 'שם לקוח', 'טלפון', 'אימייל', 'פריט', 'כמות', 'מחיר', 'תוספות', 'ווריאציה', 'הוראות מיוחדות', 'סה"כ פריט', 'תאריך', 'סטטוס'],
+    ['שם לקוח', 'טלפון', 'פריט', 'כמות', 'תוספות', 'הוראות מיוחדות', 'תאריך'],
   ];
 
   let currentRow = 1; // Start from row 1 (0-indexed, so row 1 is after header)
@@ -125,19 +125,13 @@ function generateExcel(orders: any[]) {
           : '';
         
         worksheetData.push([
-          order.id.slice(0, 8),
           order.customer_name,
           order.customer_phone || '',
-          order.customer_email || '',
           item.menu_items?.name || '',
           item.quantity,
-          itemPrice.toFixed(2),
           addons,
-          item.selected_variation || '',
           item.special_instructions || '',
-          subtotal.toFixed(2),
           new Date(order.created_at).toLocaleDateString('he-IL'),
-          order.status,
         ]);
         currentRow++;
         orderRowCount++;
@@ -145,39 +139,27 @@ function generateExcel(orders: any[]) {
     } else {
       // If no items, still show the order
       worksheetData.push([
-        order.id.slice(0, 8),
         order.customer_name,
         order.customer_phone || '',
-        order.customer_email || '',
         '',
         '',
         '',
         '',
-        '',
-        '',
-        parseFloat(order.total_amount.toString()).toFixed(2),
         new Date(order.created_at).toLocaleDateString('he-IL'),
-        order.status,
       ]);
       currentRow++;
       orderRowCount++;
     }
 
-    // Merge cells for customer info columns (B, C, D) - columns are 0-indexed
-    // Column A (0) = מספר הזמנה, Column B (1) = שם לקוח, Column C (2) = טלפון, Column D (3) = אימייל
+    // Merge cells for customer info columns - columns are 0-indexed
+    // Column A (0) = שם לקוח, Column B (1) = טלפון, Column F (5) = תאריך
     if (orderRowCount > 1) {
-      // Merge customer name (column B = 1)
-      merges.push({ s: { r: orderStartRow, c: 1 }, e: { r: orderStartRow + orderRowCount - 1, c: 1 } });
-      // Merge phone (column C = 2)
-      merges.push({ s: { r: orderStartRow, c: 2 }, e: { r: orderStartRow + orderRowCount - 1, c: 2 } });
-      // Merge email (column D = 3)
-      merges.push({ s: { r: orderStartRow, c: 3 }, e: { r: orderStartRow + orderRowCount - 1, c: 3 } });
-      // Merge order ID (column A = 0)
+      // Merge customer name (column A = 0)
       merges.push({ s: { r: orderStartRow, c: 0 }, e: { r: orderStartRow + orderRowCount - 1, c: 0 } });
-      // Merge date (column L = 11)
-      merges.push({ s: { r: orderStartRow, c: 11 }, e: { r: orderStartRow + orderRowCount - 1, c: 11 } });
-      // Merge status (column M = 12)
-      merges.push({ s: { r: orderStartRow, c: 12 }, e: { r: orderStartRow + orderRowCount - 1, c: 12 } });
+      // Merge phone (column B = 1)
+      merges.push({ s: { r: orderStartRow, c: 1 }, e: { r: orderStartRow + orderRowCount - 1, c: 1 } });
+      // Merge date (column F = 6)
+      merges.push({ s: { r: orderStartRow, c: 6 }, e: { r: orderStartRow + orderRowCount - 1, c: 6 } });
     }
   });
 
