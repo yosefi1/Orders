@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     if (format === 'excel') {
       const buffer = generateExcel(orders);
       const filename = `orders-${date || 'all'}-${today}.xlsx`;
-      return new NextResponse(buffer, {
+      return new NextResponse(new Uint8Array(buffer), {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'Content-Disposition': `attachment; filename="${filename}"`,
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     } else if (format === 'word') {
       const buffer = await generateWord(orders);
       const filename = `orders-${date || 'all'}-${today}.docx`;
-      return new NextResponse(buffer, {
+      return new NextResponse(new Uint8Array(buffer), {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'Content-Disposition': `attachment; filename="${filename}"`,
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     } else if (format === 'pdf') {
       const buffer = await generatePDF(orders);
       const filename = `orders-${date || 'all'}-${today}.pdf`;
-      return new NextResponse(buffer, {
+      return new NextResponse(new Uint8Array(buffer), {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="${filename}"`,
