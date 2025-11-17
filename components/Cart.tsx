@@ -75,10 +75,25 @@ export default function Cart() {
           const emailResult = await emailResponse.json();
           console.log('Email send result:', emailResult);
           if (!emailResponse.ok) {
-            console.error('Email send failed:', emailResult);
+            console.error('Email send failed:', {
+              status: emailResponse.status,
+              statusText: emailResponse.statusText,
+              error: emailResult.error,
+              code: emailResult.code,
+              suggestion: emailResult.suggestion,
+            });
+            // Show user-friendly error message
+            if (emailResult.error) {
+              console.warn('Email could not be sent:', emailResult.error);
+            }
+          } else {
+            console.log('✅ Email sent successfully!');
           }
-        } catch (emailError) {
-          console.error('Failed to send confirmation email:', emailError);
+        } catch (emailError: any) {
+          console.error('Failed to send confirmation email:', {
+            error: emailError.message,
+            stack: emailError.stack,
+          });
           // Don't fail the order if email fails
         }
       }

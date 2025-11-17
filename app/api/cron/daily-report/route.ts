@@ -233,51 +233,79 @@ async function sendEmail(
   pdfBuffer: Buffer,
   orderCount: number
 ) {
-  const transporter = nodemailer.createTransport({
+  if (!process.env.SMTP_HOST) {
+    throw new Error('SMTP_HOST not configured');
+  }
+
+  // Create SMTP transporter (supports Gmail and other SMTP servers)
+  const transporterConfig: any = {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
-    auth: {
+    secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    tls: {
+      rejectUnauthorized: false, // For some SMTP servers
+    },
+  };
+
+  // Add auth if provided
+  if (process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+    transporterConfig.auth = {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASSWORD,
-    },
-  });
+    };
+  }
+
+  const transporter = nodemailer.createTransport(transporterConfig);
 
   const supplierEmail = process.env.SUPPLIER_EMAIL;
   if (!supplierEmail) {
     throw new Error('SUPPLIER_EMAIL not configured');
   }
 
-  await transporter.sendMail({
-    from: process.env.SMTP_USER,
-    to: supplierEmail,
-    subject: `Daily Orders Report - ${format(new Date(), 'MMMM dd, yyyy')} (${orderCount} orders)`,
-    text: `Please find attached the daily orders report with ${orderCount} orders.`,
-    html: `
-      <h2>Daily Orders Report</h2>
-      <p>Date: ${format(new Date(), 'MMMM dd, yyyy')}</p>
-      <p>Total Orders: ${orderCount}</p>
-      <p>Please find the attached files:</p>
-      <ul>
-        <li>Orders Report (Excel)</li>
-        <li>Orders Report (Word)</li>
-        <li>Orders Report (PDF)</li>
-      </ul>
-    `,
-    attachments: [
-      {
-        filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
-        content: excelBuffer,
-      },
-      {
-        filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.docx`,
-        content: wordBuffer,
-      },
-      {
-        filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.pdf`,
-        content: pdfBuffer,
-      },
-    ],
-  });
+  const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress,
+      to: supplierEmail,
+      subject: `Daily Orders Report - ${format(new Date(), 'MMMM dd, yyyy')} (${orderCount} orders)`,
+      text: `Please find attached the daily orders report with ${orderCount} orders.`,
+      html: `
+        <h2>Daily Orders Report</h2>
+        <p>Date: ${format(new Date(), 'MMMM dd, yyyy')}</p>
+        <p>Total Orders: ${orderCount}</p>
+        <p>Please find the attached files:</p>
+        <ul>
+          <li>Orders Report (Excel)</li>
+          <li>Orders Report (Word)</li>
+          <li>Orders Report (PDF)</li>
+        </ul>
+      `,
+      attachments: [
+        {
+          filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
+          content: excelBuffer,
+        },
+        {
+          filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.docx`,
+          content: wordBuffer,
+        },
+        {
+          filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.pdf`,
+          content: pdfBuffer,
+        },
+      ],
+    });
+    console.log(`Daily report email sent successfully to ${supplierEmail}`);
+  } catch (error: any) {
+    console.error('Error sending daily report email:', {
+      error: error.message,
+      code: error.code,
+    });
+    throw error;
+  }
 }
 

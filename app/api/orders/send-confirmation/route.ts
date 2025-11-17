@@ -100,37 +100,43 @@ export async function POST(request: NextRequest) {
       emailFrom: process.env.EMAIL_FROM,
     });
 
-    // Create SMTP transporter (Intel SMTP compatible)
+    // Create SMTP transporter (supports Gmail and other SMTP servers)
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+    const isGmail = process.env.SMTP_HOST?.includes('gmail.com');
+    
     const transporterConfig: any = {
       host: process.env.SMTP_HOST || 'sc-out.intel.com',
-      port: parseInt(process.env.SMTP_PORT || '25'),
-      secure: false, // true for 465, false for other ports
+      port: smtpPort,
+      secure: smtpPort === 465, // true for 465, false for other ports (587 uses STARTTLS)
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
       tls: {
-        rejectUnauthorized: false, // For internal SMTP servers
+        rejectUnauthorized: false, // For some SMTP servers
       },
     };
 
-    // Add auth only if SMTP_USER is provided (Intel SMTP might not need auth)
-    if (process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+    // Gmail requires auth
+    if (isGmail || (process.env.SMTP_USER && process.env.SMTP_PASSWORD)) {
+      if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+        console.error('Gmail SMTP requires SMTP_USER and SMTP_PASSWORD');
+        return NextResponse.json({ 
+          success: false, 
+          error: 'SMTP authentication required for Gmail' 
+        }, { status: 500 });
+      }
+      
       transporterConfig.auth = {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
+        pass: process.env.SMTP_PASSWORD.trim(), // Remove any extra spaces
       };
     }
 
     const transporter = nodemailer.createTransport(transporterConfig);
 
-    // Verify connection
-    try {
-      await transporter.verify();
-      console.log('SMTP connection verified');
-    } catch (verifyError: any) {
-      console.error('SMTP verification failed:', verifyError);
-      return NextResponse.json({ 
-        success: false, 
-        error: `SMTP verification failed: ${verifyError.message}` 
-      }, { status: 500 });
-    }
+    // Skip verification for internal SMTP servers (they might not be accessible from Vercel)
+    // Verification will happen when we actually send the email
+    console.log('SMTP transporter created, skipping verification (will verify on send)');
 
     // Determine from address
     const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
@@ -141,20 +147,45 @@ export async function POST(request: NextRequest) {
       subject: `הזמנה התקבלה - ${orderId.slice(0, 8)}`,
     });
 
-    const mailResult = await transporter.sendMail({
-      from: fromAddress,
-      to: customerEmail,
-      subject: `הזמנה התקבלה - ${orderId.slice(0, 8)}`,
-      html: emailHtml,
-      text: `הזמנה התקבלה בהצלחה! מספר הזמנה: ${orderId.slice(0, 8)}. סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`,
-    });
+    try {
+      const mailResult = await transporter.sendMail({
+        from: fromAddress,
+        to: customerEmail,
+        subject: `הזמנה התקבלה - ${orderId.slice(0, 8)}`,
+        html: emailHtml,
+        text: `הזמנה התקבלה בהצלחה! מספר הזמנה: ${orderId.slice(0, 8)}. סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`,
+      });
 
-    console.log('Confirmation email sent successfully:', {
-      messageId: mailResult.messageId,
-      to: customerEmail,
-      response: mailResult.response,
-    });
-    return NextResponse.json({ success: true, messageId: mailResult.messageId });
+      console.log('Confirmation email sent successfully:', {
+        messageId: mailResult.messageId,
+        to: customerEmail,
+        response: mailResult.response,
+      });
+      return NextResponse.json({ success: true, messageId: mailResult.messageId });
+    } catch (sendError: any) {
+      console.error('Error during sendMail:', {
+        error: sendError.message,
+        code: sendError.code,
+        command: sendError.command,
+        response: sendError.response,
+        responseCode: sendError.responseCode,
+      });
+      
+      // If Intel SMTP doesn't work (internal server), suggest alternative
+      if (sendError.code === 'EBUSY' || sendError.code === 'ETIMEDOUT' || sendError.code === 'ECONNREFUSED') {
+        return NextResponse.json({ 
+          success: false, 
+          error: `Cannot connect to SMTP server. The server might be internal-only. Error: ${sendError.message}`,
+          suggestion: 'Consider using a public SMTP service like Gmail SMTP or SendGrid'
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ 
+        success: false, 
+        error: `Failed to send email: ${sendError.message}`,
+        code: sendError.code
+      }, { status: 500 });
+    }
   } catch (error: any) {
     console.error('Error sending confirmation email:', error);
     // Don't fail the order if email fails
