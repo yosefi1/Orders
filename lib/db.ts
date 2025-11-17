@@ -15,7 +15,7 @@ if (process.env.DATABASE_URL) {
     transaction: async () => {
       throw new Error('DATABASE_URL not configured');
     },
-  }) as NeonQueryFunction<false, false>;
+  }) as unknown as NeonQueryFunction<false, false>;
 }
 
 export { sql };
