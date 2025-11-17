@@ -106,19 +106,52 @@ function generateExcel(orders: any[]) {
   const workbook = XLSX.utils.book_new();
   
   const worksheetData = [
-    ['מספר הזמנה', 'שם לקוח', 'אימייל', 'טלפון', 'תאריך', 'סטטוס', 'סה"כ'],
+    ['מספר הזמנה', 'שם לקוח', 'טלפון', 'אימייל', 'פריט', 'כמות', 'מחיר', 'תוספות', 'ווריאציה', 'הוראות מיוחדות', 'סה"כ פריט', 'תאריך', 'סטטוס'],
   ];
 
   orders.forEach((order) => {
-    worksheetData.push([
-      order.id.slice(0, 8),
-      order.customer_name,
-      order.customer_email || '',
-      order.customer_phone || '',
-      new Date(order.created_at).toLocaleDateString('he-IL'),
-      order.status,
-      parseFloat(order.total_amount.toString()).toFixed(2),
-    ]);
+    if (order.order_items && order.order_items.length > 0) {
+      order.order_items.forEach((item: any) => {
+        const itemPrice = parseFloat(String(item.price || 0));
+        const subtotal = itemPrice * item.quantity;
+        const addons = item.selected_addons && Array.isArray(item.selected_addons) 
+          ? item.selected_addons.join(', ') 
+          : '';
+        
+        worksheetData.push([
+          order.id.slice(0, 8),
+          order.customer_name,
+          order.customer_phone || '',
+          order.customer_email || '',
+          item.menu_items?.name || '',
+          item.quantity,
+          itemPrice.toFixed(2),
+          addons,
+          item.selected_variation || '',
+          item.special_instructions || '',
+          subtotal.toFixed(2),
+          new Date(order.created_at).toLocaleDateString('he-IL'),
+          order.status,
+        ]);
+      });
+    } else {
+      // If no items, still show the order
+      worksheetData.push([
+        order.id.slice(0, 8),
+        order.customer_name,
+        order.customer_phone || '',
+        order.customer_email || '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        parseFloat(order.total_amount.toString()).toFixed(2),
+        new Date(order.created_at).toLocaleDateString('he-IL'),
+        order.status,
+      ]);
+    }
   });
 
   const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
@@ -133,17 +166,62 @@ async function generateWord(orders: any[]): Promise<Buffer> {
       text: 'דוח הזמנות',
       heading: 'Heading1',
     }),
+    new Paragraph({ text: '' }),
   ];
 
   orders.forEach((order, index) => {
+    // Order header
     children.push(
       new Paragraph({
-        text: `הזמנה #${index + 1}`,
+        text: `הזמנה #${index + 1} - ${order.id.slice(0, 8)}`,
         heading: 'Heading2',
       }),
-      new Paragraph(`לקוח: ${order.customer_name}`),
+    );
+
+    // Customer info
+    children.push(
+      new Paragraph(`שם: ${order.customer_name}`),
+    );
+    if (order.customer_phone) {
+      children.push(new Paragraph(`טלפון: ${order.customer_phone}`));
+    }
+    if (order.customer_email) {
+      children.push(new Paragraph(`אימייל: ${order.customer_email}`));
+    }
+    children.push(
       new Paragraph(`תאריך: ${new Date(order.created_at).toLocaleDateString('he-IL')}`),
-      new Paragraph(`סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`),
+      new Paragraph(`סטטוס: ${order.status}`),
+      new Paragraph({ text: '' }),
+    );
+
+    // Order items
+    if (order.order_items && order.order_items.length > 0) {
+      children.push(new Paragraph('פריטים:'));
+      order.order_items.forEach((item: any) => {
+        const itemPrice = parseFloat(String(item.price || 0));
+        let itemText = `• ${item.quantity}x ${item.menu_items?.name || ''} - ${itemPrice.toFixed(2)} ₪`;
+        if (item.selected_variation) {
+          itemText += ` (${item.selected_variation})`;
+        }
+        if (item.selected_addons && Array.isArray(item.selected_addons) && item.selected_addons.length > 0) {
+          itemText += ` [תוספות: ${item.selected_addons.join(', ')}]`;
+        }
+        if (item.special_instructions) {
+          itemText += ` [הוראות: ${item.special_instructions}]`;
+        }
+        children.push(new Paragraph(itemText));
+      });
+    }
+
+    // Total
+    children.push(
+      new Paragraph({ text: '' }),
+      new Paragraph({
+        text: `סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`,
+        heading: 'Heading3',
+      }),
+      new Paragraph({ text: '' }),
+      new Paragraph({ text: '─────────────────────────' }),
       new Paragraph({ text: '' }),
     );
   });
@@ -158,7 +236,7 @@ async function generateWord(orders: any[]): Promise<Buffer> {
 
 async function generatePDF(orders: any[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
     const buffers: Buffer[] = [];
 
     doc.on('data', buffers.push.bind(buffers));
@@ -168,15 +246,59 @@ async function generatePDF(orders: any[]): Promise<Buffer> {
     doc.on('error', reject);
 
     doc.fontSize(20).text('דוח הזמנות', { align: 'center' });
-    doc.moveDown();
+    doc.moveDown(2);
 
     orders.forEach((order, index) => {
-      doc.fontSize(14).text(`הזמנה #${index + 1}`, { underline: true });
-      doc.fontSize(10);
-      doc.text(`לקוח: ${order.customer_name}`);
-      doc.text(`תאריך: ${new Date(order.created_at).toLocaleDateString('he-IL')}`);
-      doc.text(`סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`);
-      doc.moveDown();
+      // Order header box
+      doc.rect(50, doc.y, 500, 20).stroke();
+      doc.fontSize(14).text(`הזמנה #${index + 1} - ${order.id.slice(0, 8)}`, 55, doc.y - 15);
+      doc.moveDown(1.5);
+
+      // Customer info
+      doc.fontSize(12);
+      doc.text(`שם: ${order.customer_name}`, { indent: 20 });
+      if (order.customer_phone) {
+        doc.text(`טלפון: ${order.customer_phone}`, { indent: 20 });
+      }
+      if (order.customer_email) {
+        doc.text(`אימייל: ${order.customer_email}`, { indent: 20 });
+      }
+      doc.text(`תאריך: ${new Date(order.created_at).toLocaleDateString('he-IL')}`, { indent: 20 });
+      doc.text(`סטטוס: ${order.status}`, { indent: 20 });
+      doc.moveDown(0.5);
+
+      // Order items
+      if (order.order_items && order.order_items.length > 0) {
+        doc.fontSize(11).text('פריטים:', { indent: 20 });
+        order.order_items.forEach((item: any) => {
+          const itemPrice = parseFloat(String(item.price || 0));
+          let itemText = `• ${item.quantity}x ${item.menu_items?.name || ''} - ${itemPrice.toFixed(2)} ₪`;
+          if (item.selected_variation) {
+            itemText += ` (${item.selected_variation})`;
+          }
+          if (item.selected_addons && Array.isArray(item.selected_addons) && item.selected_addons.length > 0) {
+            itemText += ` [תוספות: ${item.selected_addons.join(', ')}]`;
+          }
+          if (item.special_instructions) {
+            itemText += ` [הוראות: ${item.special_instructions}]`;
+          }
+          doc.fontSize(10).text(itemText, { indent: 40 });
+        });
+      }
+
+      // Total
+      doc.moveDown(0.5);
+      doc.fontSize(12).text(`סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`, { 
+        indent: 20,
+        align: 'right'
+      });
+
+      // Separator
+      if (index < orders.length - 1) {
+        doc.moveDown(1);
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+        doc.moveDown(1);
+      }
     });
 
     doc.end();

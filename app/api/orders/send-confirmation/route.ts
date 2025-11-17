@@ -11,6 +11,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'No email provided, skipping email' });
     }
 
+    // Check if DATABASE_URL exists, if not, skip email (for local development)
+    if (!process.env.DATABASE_URL) {
+      console.log('No DATABASE_URL, skipping email send');
+      return NextResponse.json({ success: true, message: 'No database configured, email skipped' });
+    }
+
     // Fetch order details
     const orderResult = await sql`
       SELECT * FROM orders WHERE id = ${orderId}
@@ -40,7 +46,8 @@ export async function POST(request: NextRequest) {
 
     // Generate email HTML
     const itemsHtml = items.map((item: any) => {
-      let itemText = `${item.quantity}x ${item.name} - ${item.price.toFixed(2)} ₪`;
+      const price = parseFloat(String(item.price || 0));
+      let itemText = `${item.quantity}x ${item.name} - ${price.toFixed(2)} ₪`;
       if (item.selected_variation) {
         itemText += ` (${item.selected_variation})`;
       }
@@ -76,6 +83,12 @@ export async function POST(request: NextRequest) {
       </div>
     `;
 
+    // Check if SMTP is configured
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+      console.log('SMTP not configured, skipping email');
+      return NextResponse.json({ success: false, error: 'SMTP not configured' });
+    }
+
     // Send email
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -95,6 +108,7 @@ export async function POST(request: NextRequest) {
       text: `הזמנה התקבלה בהצלחה! מספר הזמנה: ${orderId.slice(0, 8)}. סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`,
     });
 
+    console.log('Confirmation email sent successfully to:', customerEmail);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error sending confirmation email:', error);
