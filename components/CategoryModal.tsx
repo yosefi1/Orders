@@ -179,7 +179,9 @@ export default function CategoryModal({
                 if (!item) return null;
                 const isVariation = 'baseItem' in item;
                 const displayName = isVariation ? item.name : (item as MenuItem).name;
-                let price = isVariation ? (item as VariationItem).baseItem.price : (item as MenuItem).price;
+                let price: number = isVariation 
+                  ? parseFloat(String((item as VariationItem).baseItem.price || 0))
+                  : parseFloat(String((item as MenuItem).price || 0));
                 // For מאפים, show price based on variation
                 if (isVariation && (item as VariationItem).baseItem.category === 'מאפים') {
                   price = (item as VariationItem).variation === 'קטן' ? 4.50 : 8.30;
@@ -195,7 +197,7 @@ export default function CategoryModal({
                   >
                     <h3 className="font-semibold text-gray-900 mb-2">{displayName}</h3>
                     <p className="text-lg font-bold text-blue-600 mb-2">
-                      {price.toFixed(2)} ₪
+                      {isNaN(price) ? '0.00' : price.toFixed(2)} ₪
                     </p>
                     {description && (
                       <p className="text-xs text-gray-600 mb-2">{description}</p>

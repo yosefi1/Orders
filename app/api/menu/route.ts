@@ -204,9 +204,10 @@ export async function GET() {
 
     // If database has data, use it
     if (result && Array.isArray(result) && result.length > 0) {
-      // Parse JSONB fields
+      // Parse JSONB fields and ensure price is a number
       const parsed = result.map((item: any) => ({
         ...item,
+        price: parseFloat(String(item.price || 0)),
         addons: item.addons ? (typeof item.addons === 'string' ? JSON.parse(item.addons) : item.addons) : item.addons,
         variations: item.variations ? (typeof item.variations === 'string' ? JSON.parse(item.variations) : item.variations) : item.variations,
       }));
