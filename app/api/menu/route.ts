@@ -188,13 +188,13 @@ const MOCK_MENU_ITEMS = [
 ];
 
 export async function GET() {
-  // If no DATABASE_URL, use mock data immediately
-  if (!process.env.DATABASE_URL) {
-    console.log('No DATABASE_URL found, using mock data');
-    return NextResponse.json(MOCK_MENU_ITEMS);
-  }
-
   try {
+    // If no DATABASE_URL, use mock data immediately
+    if (!process.env.DATABASE_URL) {
+      console.log('No DATABASE_URL found, using mock data');
+      return NextResponse.json(MOCK_MENU_ITEMS);
+    }
+
     // Try to get data from database
     const result = await sql`
       SELECT * FROM menu_items

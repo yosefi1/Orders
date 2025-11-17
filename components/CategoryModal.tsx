@@ -38,11 +38,17 @@ export default function CategoryModal({
 
   if (!isOpen) return null;
 
+  // Safety check: ensure items is an array
+  if (!Array.isArray(items)) {
+    return null;
+  }
+
   // Transform items: if item has variations, create separate items for each variation
   // BUT: for מאפים, don't split - show the base items and let user choose size in ItemModal
   const displayItems: (MenuItem | VariationItem)[] = [];
   items.forEach((item) => {
-    if (item.has_variations && item.variations && item.variations.length > 0 && item.category !== 'מאפים') {
+    if (!item) return; // Skip null/undefined items
+    if (item.has_variations && item.variations && Array.isArray(item.variations) && item.variations.length > 0 && item.category !== 'מאפים') {
       // Create a separate item for each variation (for סלטים, etc.)
       item.variations.forEach((variation) => {
         displayItems.push({
@@ -60,7 +66,7 @@ export default function CategoryModal({
   // Special handling: if only one item and it has addons, open ItemModal directly
   // This is for טוסט which has only one option
   useEffect(() => {
-    if (isOpen && items.length === 1 && items[0].has_addons && !items[0].has_variations) {
+    if (isOpen && items.length === 1 && items[0] && items[0].has_addons && !items[0].has_variations) {
       setSelectedItem(items[0]);
       setIsItemModalOpen(true);
     }
@@ -170,19 +176,20 @@ export default function CategoryModal({
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {displayItems.map((item, index) => {
+                if (!item) return null;
                 const isVariation = 'baseItem' in item;
-                const displayName = isVariation ? item.name : item.name;
-                let price = isVariation ? item.baseItem.price : item.price;
+                const displayName = isVariation ? item.name : (item as MenuItem).name;
+                let price = isVariation ? (item as VariationItem).baseItem.price : (item as MenuItem).price;
                 // For מאפים, show price based on variation
-                if (isVariation && item.baseItem.category === 'מאפים') {
-                  price = item.variation === 'קטן' ? 4.50 : 8.30;
+                if (isVariation && (item as VariationItem).baseItem.category === 'מאפים') {
+                  price = (item as VariationItem).variation === 'קטן' ? 4.50 : 8.30;
                 }
-                const description = isVariation ? item.baseItem.description : item.description;
-                const hasAddons = isVariation ? item.baseItem.has_addons : item.has_addons;
+                const description = isVariation ? (item as VariationItem).baseItem.description : (item as MenuItem).description;
+                const hasAddons = isVariation ? (item as VariationItem).baseItem.has_addons : (item as MenuItem).has_addons;
                 
                 return (
                   <div
-                    key={isVariation ? `${item.baseItem.id}-${item.variation}` : item.id}
+                    key={isVariation ? `${(item as VariationItem).baseItem.id}-${(item as VariationItem).variation}` : (item as MenuItem).id}
                     onClick={() => handleItemClick(item)}
                     className="bg-white rounded-lg shadow-md p-4 hover:shadow-xl transition-all cursor-pointer border-2 border-gray-200 hover:border-blue-400 flex flex-col items-center justify-center min-h-[120px] text-center"
                   >
