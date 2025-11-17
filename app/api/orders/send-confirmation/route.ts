@@ -92,20 +92,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'SMTP_HOST not configured' });
     }
 
+    const smtpHost = process.env.SMTP_HOST || '';
+    const smtpUser = process.env.SMTP_USER || '';
+    const smtpPassword = process.env.SMTP_PASSWORD || '';
+    
     console.log('SMTP Config:', {
-      host: process.env.SMTP_HOST,
+      host: smtpHost,
       port: process.env.SMTP_PORT,
-      hasUser: !!process.env.SMTP_USER,
-      hasPassword: !!process.env.SMTP_PASSWORD,
+      hasUser: !!smtpUser,
+      hasPassword: !!smtpPassword,
+      userLength: smtpUser.length,
+      passwordLength: smtpPassword.length,
       emailFrom: process.env.EMAIL_FROM,
     });
 
+    // Check if Gmail and verify credentials
+    const isGmail = smtpHost.includes('gmail.com');
+    
+    if (isGmail) {
+      if (!smtpUser || !smtpPassword) {
+        console.error('Gmail SMTP requires both SMTP_USER and SMTP_PASSWORD', {
+          hasUser: !!smtpUser,
+          hasPassword: !!smtpPassword,
+          userValue: smtpUser ? `${smtpUser.substring(0, 3)}...` : 'empty',
+          passwordValue: smtpPassword ? '***' : 'empty',
+        });
+        return NextResponse.json({ 
+          success: false, 
+          error: 'SMTP authentication required for Gmail. Please check SMTP_USER and SMTP_PASSWORD in Vercel Environment Variables.' 
+        }, { status: 500 });
+      }
+    }
+
     // Create SMTP transporter (supports Gmail and other SMTP servers)
     const smtpPort = parseInt(process.env.SMTP_PORT || '587');
-    const isGmail = process.env.SMTP_HOST?.includes('gmail.com');
     
     const transporterConfig: any = {
-      host: process.env.SMTP_HOST || 'sc-out.intel.com',
+      host: smtpHost || 'sc-out.intel.com',
       port: smtpPort,
       secure: smtpPort === 465, // true for 465, false for other ports (587 uses STARTTLS)
       connectionTimeout: 10000, // 10 seconds
@@ -116,20 +139,22 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    // Gmail requires auth
-    if (isGmail || (process.env.SMTP_USER && process.env.SMTP_PASSWORD)) {
-      if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
-        console.error('Gmail SMTP requires SMTP_USER and SMTP_PASSWORD');
-        return NextResponse.json({ 
-          success: false, 
-          error: 'SMTP authentication required for Gmail' 
-        }, { status: 500 });
-      }
-      
+    // Add auth if credentials are provided
+    if (smtpUser && smtpPassword) {
       transporterConfig.auth = {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD.trim(), // Remove any extra spaces
+        user: smtpUser.trim(),
+        pass: smtpPassword.trim().replace(/\s/g, ''), // Remove ALL spaces (Gmail App Password might have spaces)
       };
+      console.log('SMTP Auth configured', {
+        user: smtpUser.trim(),
+        passwordLength: smtpPassword.trim().replace(/\s/g, '').length,
+      });
+    } else if (isGmail) {
+      // This should not happen due to check above, but just in case
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Gmail SMTP requires authentication credentials' 
+      }, { status: 500 });
     }
 
     const transporter = nodemailer.createTransport(transporterConfig);
