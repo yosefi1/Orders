@@ -85,6 +85,12 @@ export default function CategoryModal({
     selectedVariation: string | null,
     specialInstructions: string
   ) => {
+    // Calculate price for מאפים based on size
+    let finalPrice = item.price;
+    if (item.category === 'מאפים' && selectedVariation) {
+      finalPrice = selectedVariation === 'קטן' ? 4.50 : 8.30;
+    }
+
     // Create display name with addons and variations
     let displayName = item.name;
     if (selectedVariation) {
@@ -97,7 +103,7 @@ export default function CategoryModal({
     addToCart({
       id: item.id,
       name: displayName,
-      price: item.price,
+      price: finalPrice,
       selectedAddons,
       selectedVariation,
       specialInstructions,
@@ -106,6 +112,8 @@ export default function CategoryModal({
     setIsItemModalOpen(false);
     setSelectedItem(null);
     setSelectedVariation(null);
+    // Close category modal and return to home
+    onClose();
   };
 
   // If only one item with addons (like טוסט), don't show the modal, just open ItemModal
@@ -121,7 +129,10 @@ export default function CategoryModal({
               setSelectedItem(null);
               onClose();
             }}
-            onAdd={handleAddToCart}
+            onAdd={(item, selectedAddons, selectedVariation, specialInstructions) => {
+              handleAddToCart(item, selectedAddons, selectedVariation, specialInstructions);
+              // onClose is already called in handleAddToCart
+            }}
           />
         )}
       </>

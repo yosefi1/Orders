@@ -48,11 +48,19 @@ export default function ItemModal({ item, isOpen, onClose, onAdd, preSelectedVar
     setSelectedVariation(null);
     setSpecialInstructions('');
     onClose();
+    // Close category modal if exists (will be handled by parent)
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" dir="rtl">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border-2 border-blue-200">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" 
+      dir="rtl"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border-2 border-blue-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <h3 className="text-2xl font-bold text-blue-900">
