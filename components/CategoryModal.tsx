@@ -38,9 +38,6 @@ export default function CategoryModal({
 
   if (!isOpen) return null;
 
-  // Debug: log items
-  console.log('CategoryModal - categoryName:', categoryName, 'items:', items);
-
   // Transform items: if item has variations, create separate items for each variation
   // BUT: for מאפים, don't split - show the base items and let user choose size in ItemModal
   const displayItems: (MenuItem | VariationItem)[] = [];
