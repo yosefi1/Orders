@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       ORDER BY created_at ASC
     `;
 
-    const orders = ordersResult.rows;
+    const orders = ordersResult;
 
     if (!orders || orders.length === 0) {
       return NextResponse.json({ message: 'No orders for today' });
@@ -46,13 +46,16 @@ export async function GET(request: NextRequest) {
         SELECT 
           oi.quantity,
           oi.price,
+          oi.selected_addons,
+          oi.selected_variation,
+          oi.special_instructions,
           mi.name
         FROM order_items oi
         JOIN menu_items mi ON oi.menu_item_id = mi.id
         WHERE oi.order_id = ${order.id}
       `;
       
-      order.order_items = itemsResult.rows.map((row: any) => ({
+      order.order_items = itemsResult.map((row: any) => ({
         quantity: row.quantity,
         price: parseFloat(row.price),
         menu_items: { name: row.name }

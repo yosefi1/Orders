@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       RETURNING id
     `;
 
-    const orderId = orderResult.rows[0].id;
+    const orderId = orderResult[0].id;
 
     // Create order items
     for (const item of items) {
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       `;
     }
 
-    const orders = ordersResult.rows;
+    const orders = ordersResult;
 
     // Fetch order items for each order
     for (const order of orders) {
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
         WHERE oi.order_id = ${order.id}
       `;
       
-      order.order_items = itemsResult.rows.map((row: any) => ({
+      order.order_items = itemsResult.map((row: any) => ({
         quantity: row.quantity,
         price: parseFloat(row.price),
         selected_addons: row.selected_addons,

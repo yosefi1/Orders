@@ -12,7 +12,7 @@
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "@vercel/postgres": "^0.10.0",
+    "@neondatabase/serverless": "^0.9.0",
     "xlsx": "^0.18.5",
     "docx": "^8.5.0",
     "pdfkit": "^0.14.0",

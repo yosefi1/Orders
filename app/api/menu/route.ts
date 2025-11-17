@@ -196,10 +196,10 @@ export async function GET() {
       ORDER BY category ASC, name ASC
     `;
 
-    // If database has data, use it
-    if (result && result.rows && result.rows.length > 0) {
-      // Parse JSONB fields
-      const parsed = result.rows.map((item: any) => ({
+            // If database has data, use it
+            if (result && result.length > 0) {
+              // Parse JSONB fields
+              const parsed = result.map((item: any) => ({
         ...item,
         addons: item.addons ? (typeof item.addons === 'string' ? JSON.parse(item.addons) : item.addons) : null,
         variations: item.variations ? (typeof item.variations === 'string' ? JSON.parse(item.variations) : item.variations) : null,
