@@ -99,93 +99,146 @@ export async function GET(request: NextRequest) {
 function generateExcel(orders: any[]) {
   const workbook = XLSX.utils.book_new();
   
-  // Orders summary sheet
-  const summaryData = orders.map((order) => ({
-    'Order ID': order.id,
-    'Customer Name': order.customer_name,
-    'Email': order.customer_email || '',
-    'Phone': order.customer_phone || '',
-    'Total Amount': order.total_amount,
-    'Status': order.status,
-    'Order Time': format(new Date(order.created_at), 'HH:mm:ss'),
-  }));
-  
-  const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Orders Summary');
+  const worksheetData = [
+    ['שם לקוח', 'טלפון', 'פריט', 'כמות', 'תוספות', 'הוראות מיוחדות', 'תאריך'],
+  ];
 
-  // Detailed items sheet
-  const itemsData: any[] = [];
+  let currentRow = 1; // Start from row 1 (0-indexed, so row 1 is after header)
+  const merges: any[] = [];
+
   orders.forEach((order) => {
-    order.order_items.forEach((item: any) => {
-      itemsData.push({
-        'Order ID': order.id,
-        'Customer Name': order.customer_name,
-        'Item': item.menu_items.name,
-        'Quantity': item.quantity,
-        'Price': item.price,
-        'Subtotal': item.quantity * item.price,
-      });
-    });
-  });
-  
-  const itemsSheet = XLSX.utils.json_to_sheet(itemsData);
-  XLSX.utils.book_append_sheet(workbook, itemsSheet, 'Order Items');
+    const orderStartRow = currentRow;
+    let orderRowCount = 0;
 
+    if (order.order_items && order.order_items.length > 0) {
+      order.order_items.forEach((item: any) => {
+        const itemPrice = parseFloat(String(item.price || 0));
+        const addons = item.selected_addons && Array.isArray(item.selected_addons) 
+          ? item.selected_addons.join(', ') 
+          : '';
+        
+        worksheetData.push([
+          order.customer_name,
+          order.customer_phone || '',
+          item.menu_items?.name || '',
+          item.quantity,
+          addons,
+          item.special_instructions || '',
+          new Date(order.created_at).toLocaleDateString('he-IL'),
+        ]);
+        currentRow++;
+        orderRowCount++;
+      });
+    } else {
+      // If no items, still show the order
+      worksheetData.push([
+        order.customer_name,
+        order.customer_phone || '',
+        '',
+        '',
+        '',
+        '',
+        new Date(order.created_at).toLocaleDateString('he-IL'),
+      ]);
+      currentRow++;
+      orderRowCount++;
+    }
+
+    // Merge cells for customer info columns - columns are 0-indexed
+    // Column A (0) = שם לקוח, Column B (1) = טלפון, Column F (5) = תאריך
+    if (orderRowCount > 1) {
+      // Merge customer name (column A = 0)
+      merges.push({ s: { r: orderStartRow, c: 0 }, e: { r: orderStartRow + orderRowCount - 1, c: 0 } });
+      // Merge phone (column B = 1)
+      merges.push({ s: { r: orderStartRow, c: 1 }, e: { r: orderStartRow + orderRowCount - 1, c: 1 } });
+      // Merge date (column F = 6)
+      merges.push({ s: { r: orderStartRow, c: 6 }, e: { r: orderStartRow + orderRowCount - 1, c: 6 } });
+    }
+  });
+
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  
+  // Apply merges
+  if (merges.length > 0) {
+    worksheet['!merges'] = merges;
+  }
+  
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'הזמנות');
+  
   return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 }
 
-async function generateWord(orders: any[]) {
+async function generateWord(orders: any[]): Promise<Buffer> {
   const children: any[] = [
     new Paragraph({
-      text: 'Daily Orders Report',
+      text: 'דוח הזמנות',
       heading: 'Heading1',
-    }),
-    new Paragraph({
-      text: `Date: ${format(new Date(), 'MMMM dd, yyyy')}`,
-    }),
-    new Paragraph({
-      text: `Total Orders: ${orders.length}`,
     }),
     new Paragraph({ text: '' }),
   ];
 
-  // Create table
-  const tableRows = [
-    new TableRow({
-      children: [
-        new TableCell({ children: [new Paragraph('Order ID')] }),
-        new TableCell({ children: [new Paragraph('Customer')] }),
-        new TableCell({ children: [new Paragraph('Items')] }),
-        new TableCell({ children: [new Paragraph('Total')] }),
-      ],
-    }),
-  ];
+  orders.forEach((order, index) => {
+    // Order header
+    children.push(
+      new Paragraph({
+        text: `הזמנה #${index + 1} - ${order.id.slice(0, 8)}`,
+        heading: 'Heading2',
+      }),
+    );
 
-  orders.forEach((order) => {
-    const itemsText = order.order_items
-      .map((item: any) => `${item.quantity}x ${item.menu_items.name}`)
-      .join(', ');
-    
-    tableRows.push(
-      new TableRow({
-        children: [
-          new TableCell({ children: [new Paragraph(order.id.substring(0, 8))] }),
-          new TableCell({ children: [new Paragraph(order.customer_name)] }),
-          new TableCell({ children: [new Paragraph(itemsText)] }),
-          new TableCell({ children: [new Paragraph(`${order.total_amount} ILS`)] }),
-        ],
-      })
+    // Customer info
+    children.push(
+      new Paragraph(`שם: ${order.customer_name}`),
+    );
+    if (order.customer_phone) {
+      children.push(new Paragraph(`טלפון: ${order.customer_phone}`));
+    }
+    if (order.customer_email) {
+      children.push(new Paragraph(`אימייל: ${order.customer_email}`));
+    }
+    children.push(
+      new Paragraph(`תאריך: ${new Date(order.created_at).toLocaleDateString('he-IL')}`),
+      new Paragraph(`סטטוס: ${order.status}`),
+      new Paragraph({ text: '' }),
+    );
+
+    // Order items
+    if (order.order_items && order.order_items.length > 0) {
+      children.push(new Paragraph('פריטים:'));
+      order.order_items.forEach((item: any) => {
+        const itemPrice = parseFloat(String(item.price || 0));
+        let itemText = `• ${item.quantity}x ${item.menu_items?.name || ''} - ${itemPrice.toFixed(2)} ₪`;
+        if (item.selected_variation) {
+          itemText += ` (${item.selected_variation})`;
+        }
+        if (item.selected_addons && Array.isArray(item.selected_addons) && item.selected_addons.length > 0) {
+          itemText += ` [תוספות: ${item.selected_addons.join(', ')}]`;
+        }
+        if (item.special_instructions) {
+          itemText += ` [הוראות: ${item.special_instructions}]`;
+        }
+        children.push(new Paragraph(itemText));
+      });
+    }
+
+    // Total
+    children.push(
+      new Paragraph({ text: '' }),
+      new Paragraph({
+        text: `סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`,
+        heading: 'Heading3',
+      }),
+      new Paragraph({ text: '' }),
+      new Paragraph({ text: '─────────────────────────' }),
+      new Paragraph({ text: '' }),
     );
   });
 
-  children.push(
-    new Table({
-      rows: tableRows,
-      width: { size: 100, type: WidthType.PERCENTAGE },
-    })
-  );
-
-  const doc = new Document({ sections: [{ children }] });
+  const doc = new Document({
+    sections: [{
+      children: children,
+    }],
+  });
   return await Packer.toBuffer(doc);
 }
 
