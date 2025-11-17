@@ -109,7 +109,13 @@ function generateExcel(orders: any[]) {
     ['מספר הזמנה', 'שם לקוח', 'טלפון', 'אימייל', 'פריט', 'כמות', 'מחיר', 'תוספות', 'ווריאציה', 'הוראות מיוחדות', 'סה"כ פריט', 'תאריך', 'סטטוס'],
   ];
 
+  let currentRow = 1; // Start from row 1 (0-indexed, so row 1 is after header)
+  const merges: any[] = [];
+
   orders.forEach((order) => {
+    const orderStartRow = currentRow;
+    let orderRowCount = 0;
+
     if (order.order_items && order.order_items.length > 0) {
       order.order_items.forEach((item: any) => {
         const itemPrice = parseFloat(String(item.price || 0));
@@ -133,6 +139,8 @@ function generateExcel(orders: any[]) {
           new Date(order.created_at).toLocaleDateString('he-IL'),
           order.status,
         ]);
+        currentRow++;
+        orderRowCount++;
       });
     } else {
       // If no items, still show the order
@@ -151,10 +159,35 @@ function generateExcel(orders: any[]) {
         new Date(order.created_at).toLocaleDateString('he-IL'),
         order.status,
       ]);
+      currentRow++;
+      orderRowCount++;
+    }
+
+    // Merge cells for customer info columns (B, C, D) - columns are 0-indexed
+    // Column A (0) = מספר הזמנה, Column B (1) = שם לקוח, Column C (2) = טלפון, Column D (3) = אימייל
+    if (orderRowCount > 1) {
+      // Merge customer name (column B = 1)
+      merges.push({ s: { r: orderStartRow, c: 1 }, e: { r: orderStartRow + orderRowCount - 1, c: 1 } });
+      // Merge phone (column C = 2)
+      merges.push({ s: { r: orderStartRow, c: 2 }, e: { r: orderStartRow + orderRowCount - 1, c: 2 } });
+      // Merge email (column D = 3)
+      merges.push({ s: { r: orderStartRow, c: 3 }, e: { r: orderStartRow + orderRowCount - 1, c: 3 } });
+      // Merge order ID (column A = 0)
+      merges.push({ s: { r: orderStartRow, c: 0 }, e: { r: orderStartRow + orderRowCount - 1, c: 0 } });
+      // Merge date (column L = 11)
+      merges.push({ s: { r: orderStartRow, c: 11 }, e: { r: orderStartRow + orderRowCount - 1, c: 11 } });
+      // Merge status (column M = 12)
+      merges.push({ s: { r: orderStartRow, c: 12 }, e: { r: orderStartRow + orderRowCount - 1, c: 12 } });
     }
   });
 
   const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  
+  // Apply merges
+  if (merges.length > 0) {
+    worksheet['!merges'] = merges;
+  }
+  
   XLSX.utils.book_append_sheet(workbook, worksheet, 'הזמנות');
   
   return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });

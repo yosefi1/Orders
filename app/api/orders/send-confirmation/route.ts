@@ -84,24 +84,33 @@ export async function POST(request: NextRequest) {
     `;
 
     // Check if SMTP is configured
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
-      console.log('SMTP not configured, skipping email');
-      return NextResponse.json({ success: false, error: 'SMTP not configured' });
+    if (!process.env.SMTP_HOST) {
+      console.log('SMTP_HOST not configured, skipping email');
+      return NextResponse.json({ success: false, error: 'SMTP_HOST not configured' });
     }
 
-    // Send email
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false,
-      auth: {
+    // Create SMTP transporter (Intel SMTP compatible)
+    const transporterConfig: any = {
+      host: process.env.SMTP_HOST || 'sc-out.intel.com',
+      port: parseInt(process.env.SMTP_PORT || '25'),
+      secure: false, // true for 465, false for other ports
+    };
+
+    // Add auth only if SMTP_USER is provided (Intel SMTP might not need auth)
+    if (process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+      transporterConfig.auth = {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD,
-      },
-    });
+      };
+    }
+
+    const transporter = nodemailer.createTransport(transporterConfig);
+
+    // Determine from address
+    const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
 
     await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: fromAddress,
       to: customerEmail,
       subject: `הזמנה התקבלה - ${orderId.slice(0, 8)}`,
       html: emailHtml,
