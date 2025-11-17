@@ -2,6 +2,8 @@
 
 A modern web application for ordering food from the cafeteria, accessible from any device.
 
+Last updated: 2025-01-27
+
 ## Features
 
 - 📱 Responsive design (mobile & desktop)
