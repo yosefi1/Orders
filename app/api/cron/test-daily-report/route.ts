@@ -6,26 +6,12 @@ import PDFDocument from 'pdfkit';
 import nodemailer from 'nodemailer';
 import { format } from 'date-fns';
 
-// Verify cron secret
-function verifyCronSecret(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  
-  if (!cronSecret) {
-    return false;
-  }
-  
-  return authHeader === `Bearer ${cronSecret}`;
-}
-
+// This endpoint doesn't require CRON_SECRET - for manual testing
 export async function GET(request: NextRequest) {
-  // Verify this is a legitimate cron request
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const today = format(new Date(), 'yyyy-MM-dd');
+
+    console.log('Manual daily report trigger - fetching orders for:', today);
 
     // Fetch today's orders
     const ordersResult = await sql`
@@ -38,7 +24,11 @@ export async function GET(request: NextRequest) {
 
     if (!orders || orders.length === 0) {
       console.log('No orders for today, skipping email');
-      return NextResponse.json({ message: 'No orders for today' });
+      return NextResponse.json({ 
+        message: 'No orders for today',
+        date: today,
+        ordersCount: 0
+      });
     }
     
     console.log(`Found ${orders.length} orders for today, generating report...`);
@@ -61,6 +51,9 @@ export async function GET(request: NextRequest) {
       order.order_items = itemsResult.map((row: any) => ({
         quantity: row.quantity,
         price: parseFloat(row.price),
+        selected_addons: row.selected_addons,
+        selected_variation: row.selected_variation,
+        special_instructions: row.special_instructions,
         menu_items: { name: row.name }
       }));
     }
@@ -75,16 +68,29 @@ export async function GET(request: NextRequest) {
     const pdfBuffer = await generatePDF(orders);
 
     // Send email with attachments
-    await sendEmail(excelBuffer, wordBuffer, pdfBuffer, orders.length);
+    try {
+      await sendEmail(excelBuffer, wordBuffer, pdfBuffer, orders.length);
+      console.log('✅ Daily report email sent successfully!');
+    } catch (emailError: any) {
+      console.error('❌ Error sending email:', emailError);
+      return NextResponse.json({ 
+        success: false,
+        error: 'Failed to send email',
+        emailError: emailError.message,
+        ordersCount: orders.length
+      }, { status: 500 });
+    }
 
     return NextResponse.json({ 
       success: true, 
-      message: `Daily report sent with ${orders.length} orders` 
+      message: `Daily report sent with ${orders.length} orders`,
+      date: today,
+      ordersCount: orders.length
     });
   } catch (error: any) {
     console.error('Error generating daily report:', error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message, stack: error.stack },
       { status: 500 }
     );
   }
