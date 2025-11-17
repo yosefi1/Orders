@@ -71,8 +71,14 @@ export async function GET(request: NextRequest) {
     // Generate Word document
     const wordBuffer = await generateWord(orders);
     
-    // Generate PDF
-    const pdfBuffer = await generatePDF(orders);
+    // Generate PDF (skip if it fails)
+    let pdfBuffer: Buffer | null = null;
+    try {
+      pdfBuffer = await generatePDF(orders);
+    } catch (pdfError: any) {
+      console.warn('PDF generation failed, continuing without PDF:', pdfError.message);
+      // Continue without PDF
+    }
 
     // Send email with attachments
     await sendEmail(excelBuffer, wordBuffer, pdfBuffer, orders.length);
@@ -185,13 +191,18 @@ async function generateWord(orders: any[]) {
 
 async function generatePDF(orders: any[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
+    // Use standard fonts that don't require external files
+    const doc = new PDFDocument({ 
+      margin: 50,
+      autoFirstPage: true
+    });
     const buffers: Buffer[] = [];
 
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(buffers)));
     doc.on('error', reject);
 
+    // Use default font (Helvetica) - don't specify font explicitly
     doc.fontSize(20).text('Daily Orders Report', { align: 'center' });
     doc.moveDown();
     doc.fontSize(12).text(`Date: ${format(new Date(), 'MMMM dd, yyyy')}`);
@@ -233,7 +244,7 @@ async function generatePDF(orders: any[]): Promise<Buffer> {
 async function sendEmail(
   excelBuffer: Buffer,
   wordBuffer: Buffer,
-  pdfBuffer: Buffer,
+  pdfBuffer: Buffer | null,
   orderCount: number
 ) {
   if (!process.env.SMTP_HOST) {
@@ -289,7 +300,7 @@ async function sendEmail(
         <ul>
           <li>Orders Report (Excel)</li>
           <li>Orders Report (Word)</li>
-          <li>Orders Report (PDF)</li>
+          ${pdfBuffer ? '<li>Orders Report (PDF)</li>' : ''}
         </ul>
       `,
       attachments: [
@@ -301,10 +312,10 @@ async function sendEmail(
           filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.docx`,
           content: wordBuffer,
         },
-        {
+        ...(pdfBuffer ? [{
           filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.pdf`,
           content: pdfBuffer,
-        },
+        }] : []),
       ],
     });
     console.log(`Daily report email sent successfully to ${supplierEmail}`);
