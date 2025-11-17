@@ -55,12 +55,25 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const ordersResult = await sql`
-      SELECT * FROM orders
-      ORDER BY created_at DESC
-    `;
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get('date');
+
+    let ordersResult;
+    if (date) {
+      ordersResult = await sql`
+        SELECT * FROM orders
+        WHERE order_date = ${date}
+        ORDER BY created_at DESC
+      `;
+    } else {
+      ordersResult = await sql`
+        SELECT * FROM orders
+        ORDER BY created_at DESC
+        LIMIT 100
+      `;
+    }
 
     const orders = ordersResult.rows;
 
@@ -70,6 +83,9 @@ export async function GET() {
         SELECT 
           oi.quantity,
           oi.price,
+          oi.selected_addons,
+          oi.selected_variation,
+          oi.special_instructions,
           mi.name
         FROM order_items oi
         JOIN menu_items mi ON oi.menu_item_id = mi.id
@@ -79,6 +95,9 @@ export async function GET() {
       order.order_items = itemsResult.rows.map((row: any) => ({
         quantity: row.quantity,
         price: parseFloat(row.price),
+        selected_addons: row.selected_addons,
+        selected_variation: row.selected_variation,
+        special_instructions: row.special_instructions,
         menu_items: { name: row.name }
       }));
     }

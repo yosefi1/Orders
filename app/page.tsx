@@ -79,7 +79,14 @@ export default function Home() {
                 מקפיטריית אינטל
               </h2>
             </div>
-            <div className="w-[120px]"></div> {/* Spacer for centering */}
+            <div className="w-[120px] flex justify-end">
+              <a
+                href="/dashboard"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm"
+              >
+                לוח בקרה
+              </a>
+            </div>
           </div>
         </div>
       </header>
