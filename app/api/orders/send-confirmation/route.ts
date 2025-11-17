@@ -163,8 +163,21 @@ export async function POST(request: NextRequest) {
     // Verification will happen when we actually send the email
     console.log('SMTP transporter created, skipping verification (will verify on send)');
 
-    // Determine from address
-    const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
+    // Determine from address and name
+    // Gmail doesn't allow sending from a different email address, but we can change the display name
+    const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
+    const emailFromName = process.env.EMAIL_FROM_NAME || 'קפיטריית אינטל';
+    
+    console.log('Email From Config:', {
+      EMAIL_FROM: process.env.EMAIL_FROM,
+      EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME,
+      SMTP_USER: process.env.SMTP_USER,
+      emailFrom: emailFrom,
+      emailFromName: emailFromName,
+    });
+    
+    // Format: "Display Name <email@address.com>"
+    const fromAddress = `${emailFromName} <${emailFrom}>`;
 
     console.log('Sending email:', {
       from: fromAddress,

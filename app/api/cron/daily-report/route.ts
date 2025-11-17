@@ -265,7 +265,12 @@ async function sendEmail(
     throw new Error('SUPPLIER_EMAIL not configured');
   }
 
-  const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
+  // Determine from address and name
+  const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
+  const emailFromName = process.env.EMAIL_FROM_NAME || 'קפיטריית אינטל';
+  
+  // Format: "Display Name <email@address.com>"
+  const fromAddress = `${emailFromName} <${emailFrom}>`;
 
   try {
     await transporter.sendMail({
