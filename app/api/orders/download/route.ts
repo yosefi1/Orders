@@ -144,11 +144,15 @@ async function generateWord(orders: any[]): Promise<Buffer> {
       new Paragraph(`לקוח: ${order.customer_name}`),
       new Paragraph(`תאריך: ${new Date(order.created_at).toLocaleDateString('he-IL')}`),
       new Paragraph(`סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`),
-      new Paragraph(''),
+      new Paragraph({ text: '' }),
     );
   });
 
-  const doc = new Document({ children });
+  const doc = new Document({
+    sections: [{
+      children: children,
+    }],
+  });
   return await Packer.toBuffer(doc);
 }
 
