@@ -188,6 +188,12 @@ const MOCK_MENU_ITEMS = [
 ];
 
 export async function GET() {
+  // If no DATABASE_URL, use mock data immediately
+  if (!process.env.DATABASE_URL) {
+    console.log('No DATABASE_URL found, using mock data');
+    return NextResponse.json(MOCK_MENU_ITEMS);
+  }
+
   try {
     // Try to get data from database
     const result = await sql`
@@ -196,19 +202,19 @@ export async function GET() {
       ORDER BY category ASC, name ASC
     `;
 
-            // If database has data, use it
-            if (result && result.length > 0) {
-              // Parse JSONB fields
-              const parsed = result.map((item: any) => ({
+    // If database has data, use it
+    if (result && Array.isArray(result) && result.length > 0) {
+      // Parse JSONB fields
+      const parsed = result.map((item: any) => ({
         ...item,
-        addons: item.addons ? (typeof item.addons === 'string' ? JSON.parse(item.addons) : item.addons) : null,
-        variations: item.variations ? (typeof item.variations === 'string' ? JSON.parse(item.variations) : item.variations) : null,
+        addons: item.addons ? (typeof item.addons === 'string' ? JSON.parse(item.addons) : item.addons) : item.addons,
+        variations: item.variations ? (typeof item.variations === 'string' ? JSON.parse(item.variations) : item.variations) : item.variations,
       }));
       return NextResponse.json(parsed);
     }
     
     // If database is empty or not set up, use mock data
-    console.log('Using mock data - database not set up yet');
+    console.log('Database is empty, using mock data');
     return NextResponse.json(MOCK_MENU_ITEMS);
   } catch (error: any) {
     console.error('Database error, using mock data:', error.message);

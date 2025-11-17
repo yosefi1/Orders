@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import AdminAuthModal from '@/components/AdminAuthModal';
+import DownloadModal from '@/components/DownloadModal';
 
 interface OrderItem {
   quantity: number;
@@ -31,6 +33,9 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterDate, setFilterDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -73,6 +78,46 @@ export default function Dashboard() {
     ? orders.reduce((sum, order) => sum + parseFloat(order.total_amount.toString()), 0)
     : 0;
 
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm('האם אתה בטוח שברצונך למחוק את ההזמנה?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchOrders();
+      } else {
+        alert('שגיאה במחיקת ההזמנה');
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert('שגיאה במחיקת ההזמנה');
+    }
+  };
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        fetchOrders();
+      } else {
+        alert('שגיאה בעדכון הסטטוס');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('שגיאה בעדכון הסטטוס');
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-50" dir="rtl">
       {/* Header */}
@@ -107,7 +152,7 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 py-8">
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <label className="text-sm font-medium text-gray-700">
               סינון לפי תאריך:
             </label>
@@ -117,6 +162,28 @@ export default function Dashboard() {
               onChange={(e) => setFilterDate(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <button
+              onClick={() => setShowDownloadModal(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+            >
+              📥 הורד הזמנות
+            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setShowAdminModal(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium"
+              >
+                🔐 מנהל
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setIsAdmin(false)}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+              >
+                יציאה ממצב מנהל
+              </button>
+            )}
             <div className="mr-auto">
               <span className="text-lg font-semibold text-blue-900">
                 סה"כ הזמנות: {orders.length} | סה"כ סכום: {totalAmount.toFixed(2)} ₪
@@ -174,6 +241,25 @@ export default function Dashboard() {
                     <p className="text-2xl font-bold text-blue-600">
                       {parseFloat(order.total_amount.toString()).toFixed(2)} ₪
                     </p>
+                    {isAdmin && (
+                      <div className="mt-2 flex gap-2">
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
+                          className="px-2 py-1 text-sm border border-gray-300 rounded"
+                        >
+                          <option value="pending">ממתין</option>
+                          <option value="completed">הושלם</option>
+                          <option value="cancelled">בוטל</option>
+                        </select>
+                        <button
+                          onClick={() => handleDeleteOrder(order.id)}
+                          className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                        >
+                          מחק
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -216,6 +302,18 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      <AdminAuthModal
+        isOpen={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
+        onSuccess={() => setIsAdmin(true)}
+      />
+
+      <DownloadModal
+        isOpen={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        filterDate={filterDate}
+      />
     </main>
   );
 }

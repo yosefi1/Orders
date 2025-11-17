@@ -24,16 +24,25 @@ export default function Home() {
       const response = await fetch('/api/menu');
       const data = await response.json();
       
+      console.log('Fetched menu data:', data);
+      console.log('Is array?', Array.isArray(data));
+      console.log('Data length:', Array.isArray(data) ? data.length : 'not an array');
+      
       if (Array.isArray(data)) {
         const parsed = data.map((item: any) => ({
           ...item,
-          addons: item.addons ? (typeof item.addons === 'string' ? JSON.parse(item.addons) : item.addons) : null,
-          variations: item.variations ? (typeof item.variations === 'string' ? JSON.parse(item.variations) : item.variations) : null,
+          addons: item.addons ? (typeof item.addons === 'string' ? JSON.parse(item.addons) : item.addons) : item.addons,
+          variations: item.variations ? (typeof item.variations === 'string' ? JSON.parse(item.variations) : item.variations) : item.variations,
         }));
+        console.log('Parsed menu items:', parsed);
         setMenuItems(parsed);
+      } else {
+        console.error('Menu data is not an array:', data);
+        setMenuItems([]);
       }
     } catch (error) {
       console.error('Error fetching menu:', error);
+      setMenuItems([]);
     } finally {
       setLoading(false);
     }
@@ -47,12 +56,17 @@ export default function Home() {
 
   // Get items for selected category
   const getCategoryItems = (categoryName: string): MenuItem[] => {
+    console.log('getCategoryItems - categoryName:', categoryName, 'menuItems:', menuItems);
     if (categoryMapping[categoryName]) {
-      return menuItems.filter(item =>
+      const filtered = menuItems.filter(item =>
         categoryMapping[categoryName].includes(item.category || '')
       );
+      console.log('Filtered items (mapping):', filtered);
+      return filtered;
     }
-    return menuItems.filter(item => item.category === categoryName);
+    const filtered = menuItems.filter(item => item.category === categoryName);
+    console.log('Filtered items (direct):', filtered);
+    return filtered;
   };
 
   return (
@@ -84,7 +98,7 @@ export default function Home() {
                 href="/dashboard"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm"
               >
-                לוח בקרה
+                הזמנות
               </a>
             </div>
           </div>
@@ -99,6 +113,7 @@ export default function Home() {
             
             {selectedCategory && selectedCategory !== 'שתייה קרה' && (
               <CategoryModal
+                key={selectedCategory} // Force re-render when category changes
                 isOpen={!!selectedCategory}
                 onClose={() => setSelectedCategory(null)}
                 categoryName={selectedCategory}

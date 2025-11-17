@@ -38,6 +38,9 @@ export default function CategoryModal({
 
   if (!isOpen) return null;
 
+  // Debug: log items
+  console.log('CategoryModal - categoryName:', categoryName, 'items:', items);
+
   // Transform items: if item has variations, create separate items for each variation
   // BUT: for מאפים, don't split - show the base items and let user choose size in ItemModal
   const displayItems: (MenuItem | VariationItem)[] = [];
@@ -161,8 +164,15 @@ export default function CategoryModal({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {displayItems.map((item, index) => {
+            {displayItems.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">אין פריטים בקטגוריה זו</p>
+                <p className="text-sm text-gray-400 mt-2">קטגוריה: {categoryName}</p>
+                <p className="text-sm text-gray-400">מספר פריטים שהתקבלו: {items.length}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {displayItems.map((item, index) => {
                 const isVariation = 'baseItem' in item;
                 const displayName = isVariation ? item.name : item.name;
                 let price = isVariation ? item.baseItem.price : item.price;
@@ -192,7 +202,8 @@ export default function CategoryModal({
                   </div>
                 );
               })}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

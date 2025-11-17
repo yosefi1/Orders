@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useCart } from '@/contexts/CartContext';
+import OrderSuccessModal from './OrderSuccessModal';
 
 const MIN_ORDER_AMOUNT = 25;
 
@@ -12,6 +13,8 @@ export default function Cart() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderId, setOrderId] = useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +60,27 @@ export default function Cart() {
         throw new Error(data.error || 'ההזמנה נכשלה');
       }
 
-      setMessage({ type: 'success', text: 'ההזמנה בוצעה בהצלחה!' });
+      // Send confirmation email
+      if (customerEmail.trim()) {
+        try {
+          await fetch('/api/orders/send-confirmation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: data.orderId,
+              customerEmail: customerEmail.trim(),
+              customerName: customerName.trim(),
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send confirmation email:', emailError);
+          // Don't fail the order if email fails
+        }
+      }
+
+      // Show success modal
+      setOrderId(data.orderId);
+      setShowSuccessModal(true);
       clearCart();
       setCustomerName('');
       setCustomerEmail('');
@@ -209,6 +232,13 @@ export default function Cart() {
           </form>
         </>
       )}
+
+      <OrderSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        orderId={orderId}
+        customerName={customerName}
+      />
     </div>
   );
 }
