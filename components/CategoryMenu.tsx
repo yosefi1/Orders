@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 
 interface Category {
   name: string;
@@ -24,35 +25,44 @@ interface CategoryMenuProps {
 }
 
 export default function CategoryMenu({ onSelectCategory }: CategoryMenuProps) {
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  const handleImageError = (categoryName: string) => {
+    setImageErrors((prev) => new Set(prev).add(categoryName));
+  };
+
   return (
     <div dir="rtl" className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-900">תפריט איסוף עצמי</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {categories.map((category) => (
-          <div
-            key={category.name}
-            onClick={() => onSelectCategory(category.name)}
-            className="cursor-pointer group"
-          >
-            <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all group-hover:scale-105">
-              {/* Placeholder for image - you can replace with actual images */}
-              <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                <span className="text-6xl">{category.icon}</span>
+        {categories.map((category) => {
+          const hasError = imageErrors.has(category.name);
+          return (
+            <div
+              key={category.name}
+              onClick={() => onSelectCategory(category.name)}
+              className="cursor-pointer group"
+            >
+              <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all group-hover:scale-105">
+                {hasError ? (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                    <span className="text-6xl">{category.icon}</span>
+                  </div>
+                ) : (
+                  <Image
+                    src={category.image}
+                    alt={category.name}
+                    fill
+                    className="object-cover"
+                    onError={() => handleImageError(category.name)}
+                  />
+                )}
               </div>
-              {/* You can uncomment this when you have actual images:
-              <Image
-                src={category.image}
-                alt={category.name}
-                fill
-                className="object-cover"
-              />
-              */}
+              <p className="text-center mt-2 font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                {category.name}
+              </p>
             </div>
-            <p className="text-center mt-2 font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-              {category.name}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

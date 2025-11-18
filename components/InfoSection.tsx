@@ -7,7 +7,7 @@ export default function InfoSection() {
       <ul className="space-y-3 text-gray-700">
         <li className="flex items-start">
           <span className="text-blue-600 font-bold ml-2">•</span>
-          <span>מזמינים דרך הלינק המצורף עד השעה 10:30</span>
+          <span>מזמינים דרך האתר עד השעה 10:30</span>
         </li>
         <li className="flex items-start">
           <span className="text-blue-600 font-bold ml-2">•</span>

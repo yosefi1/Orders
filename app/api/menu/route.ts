@@ -10,6 +10,7 @@ const MOCK_MENU_ITEMS = [
     description: 'כריך עם חביתה',
     price: 18.50,
     category: 'כריכים',
+    image_url: '/sandwich-egg.jpg', // הוסף את שם הקובץ שלך כאן
     has_addons: true,
     has_variations: false,
     addons: ['אבוקדו', 'טונה', 'צהובה'],

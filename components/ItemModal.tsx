@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import React from 'react';
+import Image from 'next/image';
 
 import { MenuItem } from '@/types/menu';
 
@@ -17,6 +18,7 @@ export default function ItemModal({ item, isOpen, onClose, onAdd, preSelectedVar
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [selectedVariation, setSelectedVariation] = useState<string | null>(preSelectedVariation || null);
   const [specialInstructions, setSpecialInstructions] = useState('');
+  const [imageError, setImageError] = useState(false);
 
   // Update selectedVariation when preSelectedVariation changes
   React.useEffect(() => {
@@ -24,6 +26,11 @@ export default function ItemModal({ item, isOpen, onClose, onAdd, preSelectedVar
       setSelectedVariation(preSelectedVariation);
     }
   }, [preSelectedVariation]);
+
+  // Reset image error when item changes
+  React.useEffect(() => {
+    setImageError(false);
+  }, [item.id]);
 
   if (!isOpen) return null;
 
@@ -73,6 +80,19 @@ export default function ItemModal({ item, isOpen, onClose, onAdd, preSelectedVar
               ×
             </button>
           </div>
+
+          {/* Item Image */}
+          {item.image_url && !imageError && (
+            <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100">
+              <Image
+                src={item.image_url}
+                alt={item.name}
+                fill
+                className="object-cover"
+                onError={() => setImageError(true)}
+              />
+            </div>
+          )}
 
           {item.description && (
             <p className="text-gray-600 mb-4">{item.description}</p>

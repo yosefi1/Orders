@@ -179,6 +179,8 @@ export default function CategoryModal({
                 if (!item) return null;
                 const isVariation = 'baseItem' in item;
                 const displayName = isVariation ? item.name : (item as MenuItem).name;
+                const itemCategory = isVariation ? (item as VariationItem).baseItem.category : (item as MenuItem).category;
+                const isMafim = itemCategory === 'מאפים';
                 let price: number = isVariation 
                   ? parseFloat(String((item as VariationItem).baseItem.price || 0))
                   : parseFloat(String((item as MenuItem).price || 0));
@@ -196,9 +198,15 @@ export default function CategoryModal({
                     className="bg-white rounded-lg shadow-md p-4 hover:shadow-xl transition-all cursor-pointer border-2 border-gray-200 hover:border-blue-400 flex flex-col items-center justify-center min-h-[120px] text-center"
                   >
                     <h3 className="font-semibold text-gray-900 mb-2">{displayName}</h3>
-                    <p className="text-lg font-bold text-blue-600 mb-2">
-                      {isNaN(price) ? '0.00' : price.toFixed(2)} ₪
-                    </p>
+                    {isMafim ? (
+                      <p className="text-sm font-bold text-blue-600 mb-2">
+                        4.5 ₪ \ 8.30 ₪
+                      </p>
+                    ) : (
+                      <p className="text-lg font-bold text-blue-600 mb-2">
+                        {isNaN(price) ? '0.00' : price.toFixed(2)} ₪
+                      </p>
+                    )}
                     {description && (
                       <p className="text-xs text-gray-600 mb-2">{description}</p>
                     )}
