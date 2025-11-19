@@ -66,7 +66,8 @@ export async function GET(request: NextRequest) {
     if (format === 'excel') {
       const buffer = await generateExcel(orders);
       const filename = `orders-${date || 'all'}-${today}.xlsx`;
-      return new NextResponse(buffer, {
+      const excelBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+      return new NextResponse(excelBuffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'Content-Disposition': `attachment; filename="${filename}"`,
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function generateExcel(orders: any[]): Promise<Buffer> {
+async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('הזמנות');
 
@@ -174,7 +175,8 @@ async function generateExcel(orders: any[]): Promise<Buffer> {
   });
 
   // Generate buffer
-  return await workbook.xlsx.writeBuffer();
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
 }
 
 async function generateWord(orders: any[]): Promise<Buffer> {

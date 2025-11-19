@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function generateExcel(orders: any[]): Promise<Buffer> {
+async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('הזמנות');
 
@@ -189,7 +189,8 @@ async function generateExcel(orders: any[]): Promise<Buffer> {
   });
 
   // Generate buffer
-  return await workbook.xlsx.writeBuffer();
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
 }
 
 async function generateWord(orders: any[]): Promise<Buffer> {
@@ -336,7 +337,7 @@ async function sendEmail(
       attachments: [
         {
           filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
-          content: excelBuffer,
+          content: Buffer.isBuffer(excelBuffer) ? excelBuffer : Buffer.from(excelBuffer),
         },
         {
           filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.docx`,
