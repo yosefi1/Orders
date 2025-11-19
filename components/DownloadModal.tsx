@@ -9,7 +9,7 @@ interface DownloadModalProps {
 export default function DownloadModal({ isOpen, onClose, filterDate }: DownloadModalProps) {
   if (!isOpen) return null;
 
-  const handleDownload = (format: 'excel' | 'word' | 'pdf') => {
+  const handleDownload = (format: 'excel' | 'word') => {
     const url = `/api/orders/download?date=${filterDate}&format=${format}`;
     window.open(url, '_blank');
   };
@@ -48,13 +48,6 @@ export default function DownloadModal({ isOpen, onClose, filterDate }: DownloadM
           >
             <span>📄</span>
             Word (.docx)
-          </button>
-          <button
-            onClick={() => handleDownload('pdf')}
-            className="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 font-semibold shadow-md flex items-center justify-center gap-2"
-          >
-            <span>📑</span>
-            PDF (.pdf)
           </button>
         </div>
         <button

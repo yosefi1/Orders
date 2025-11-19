@@ -8,9 +8,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
-    const format = searchParams.get('format'); // 'excel', 'word', 'pdf'
+    const format = searchParams.get('format'); // 'excel', 'word'
 
-    if (!format || !['excel', 'word', 'pdf'].includes(format)) {
+    if (!format || !['excel', 'word'].includes(format)) {
       return NextResponse.json({ error: 'Invalid format' }, { status: 400 });
     }
 
@@ -200,11 +200,23 @@ function generateExcel(orders: any[]) {
   
   XLSX.utils.book_append_sheet(workbook, worksheet, 'הזמנות');
   
+  // Set default column widths
+  worksheet['!cols'] = [
+    { wch: 15 }, // שם לקוח
+    { wch: 12 }, // טלפון
+    { wch: 20 }, // פריט
+    { wch: 8 },  // כמות
+    { wch: 25 }, // תוספות
+    { wch: 20 }, // הוראות מיוחדות
+    { wch: 12 }, // תאריך
+  ];
+
   // Write with cell styles support
   return XLSX.write(workbook, { 
     type: 'buffer', 
     bookType: 'xlsx',
-    cellStyles: true
+    cellStyles: true,
+    bookSST: false
   });
 }
 
