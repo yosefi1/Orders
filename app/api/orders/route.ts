@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 
-const MIN_ORDER_AMOUNT = 25;
+const MIN_ORDER_AMOUNT = 24;
 
 export async function POST(request: NextRequest) {
   try {

@@ -129,6 +129,21 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 mt-12 py-6">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-center md:text-right text-gray-600 text-sm">
+              <p className="font-medium text-gray-700 mb-1">פותח על ידי</p>
+              <p className="text-blue-600 font-semibold">יוסף טל</p>
+            </div>
+            <div className="text-center text-gray-500 text-xs">
+              <p>© {new Date().getFullYear()} קפיטריית אינטל. כל הזכויות שמורות.</p>
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

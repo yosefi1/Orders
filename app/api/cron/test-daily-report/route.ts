@@ -338,6 +338,13 @@ async function sendEmail(
     throw new Error('SUPPLIER_EMAIL not configured');
   }
 
+  // Support multiple recipients (comma-separated or array)
+  // Split by comma and trim whitespace, then filter out empty strings
+  const recipientEmails = supplierEmail
+    .split(',')
+    .map(email => email.trim())
+    .filter(email => email.length > 0);
+
   // Determine from address and name
   const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
   const emailFromName = process.env.EMAIL_FROM_NAME || 'קפיטריית אינטל';
@@ -348,7 +355,7 @@ async function sendEmail(
   try {
     await transporter.sendMail({
       from: fromAddress,
-      to: supplierEmail,
+      to: recipientEmails,
       subject: `Daily Orders Report - ${format(new Date(), 'MMMM dd, yyyy')} (${orderCount} orders)`,
       text: `Please find attached the daily orders report with ${orderCount} orders.`,
       html: `
@@ -377,7 +384,7 @@ async function sendEmail(
         }] : []),
       ],
     });
-    console.log(`Daily report email sent successfully to ${supplierEmail}`);
+    console.log(`Daily report email sent successfully to ${recipientEmails.join(', ')}`);
   } catch (error: any) {
     console.error('Error sending daily report email:', {
       error: error.message,

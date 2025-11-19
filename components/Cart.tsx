@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useCart } from '@/contexts/CartContext';
 import OrderSuccessModal from './OrderSuccessModal';
 
-const MIN_ORDER_AMOUNT = 25;
+const MIN_ORDER_AMOUNT = 24;
 
 export default function Cart() {
   const { cart, updateQuantity, removeItem, clearCart, totalAmount } = useCart();

@@ -11,7 +11,7 @@ export default function InfoSection() {
         </li>
         <li className="flex items-start">
           <span className="text-blue-600 font-bold ml-2">•</span>
-          <span>מינימום הזמנה 25 ₪</span>
+          <span>מינימום הזמנה 24 ₪</span>
         </li>
         <li className="flex items-start">
           <span className="text-blue-600 font-bold ml-2">•</span>
