@@ -76,7 +76,7 @@ const MOCK_MENU_ITEMS = [
     has_addons: false,
     has_variations: true,
     addons: null,
-    variations: ['סלט ישראלי', 'סלט טונה', 'סלט עם בולגרית'],
+    variations: ['סלט ישראלי', 'סלט טונה', 'סלט עם מוצרלה'],
     available: true,
   },
   // שתייה קרה - כל האופציות
@@ -122,7 +122,7 @@ const MOCK_MENU_ITEMS = [
     category: 'פיצה',
     has_addons: true,
     has_variations: false,
-    addons: ['תירס', 'עגבניה', 'זיתים', 'בצל', 'גמבה', 'בולגרית', 'חריף'],
+    addons: ['תירס', 'עגבניה', 'זיתים', 'בצל', 'גמבה', 'חריף'],
     variations: null,
     available: true,
   },

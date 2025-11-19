@@ -8,6 +8,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { customerName, customerEmail, customerPhone, items } = body;
 
+    // Validate required fields
+    if (!customerEmail || !customerEmail.trim()) {
+      return NextResponse.json(
+        { error: 'Email is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!customerPhone || !customerPhone.trim()) {
+      return NextResponse.json(
+        { error: 'Phone is required' },
+        { status: 400 }
+      );
+    }
+
     // Validate minimum order amount
     const totalAmount = items.reduce(
       (sum: number, item: any) => sum + item.price * item.quantity,
@@ -24,7 +39,7 @@ export async function POST(request: NextRequest) {
     // Create order
     const orderResult = await sql`
       INSERT INTO orders (customer_name, customer_email, customer_phone, total_amount, status)
-      VALUES (${customerName}, ${customerEmail || null}, ${customerPhone || null}, ${totalAmount}, 'pending')
+      VALUES (${customerName}, ${customerEmail.trim()}, ${customerPhone.trim()}, ${totalAmount}, 'pending')
       RETURNING id
     `;
 

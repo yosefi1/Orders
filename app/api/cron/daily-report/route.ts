@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType } from 'docx';
-import PDFDocument from 'pdfkit';
 import nodemailer from 'nodemailer';
 import { format } from 'date-fns';
 
@@ -70,18 +69,9 @@ export async function GET(request: NextRequest) {
     
     // Generate Word document
     const wordBuffer = await generateWord(orders);
-    
-    // Generate PDF (skip if it fails)
-    let pdfBuffer: Buffer | null = null;
-    try {
-      pdfBuffer = await generatePDF(orders);
-    } catch (pdfError: any) {
-      console.warn('PDF generation failed, continuing without PDF:', pdfError.message);
-      // Continue without PDF
-    }
 
     // Send email with attachments
-    await sendEmail(excelBuffer, wordBuffer, pdfBuffer, orders.length);
+    await sendEmail(excelBuffer, wordBuffer, orders.length);
 
     return NextResponse.json({ 
       success: true, 
@@ -162,10 +152,53 @@ function generateExcel(orders: any[]) {
   if (merges.length > 0) {
     worksheet['!merges'] = merges;
   }
+
+  // Add borders to all cells
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!worksheet[cellAddress]) {
+        worksheet[cellAddress] = { v: '', t: 's' };
+      }
+      if (!worksheet[cellAddress].s) {
+        worksheet[cellAddress].s = {};
+      }
+      worksheet[cellAddress].s.border = {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } },
+      };
+    }
+  }
+
+  // Style header row (bold and background color)
+  for (let C = range.s.c; C <= range.e.c; ++C) {
+    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (worksheet[cellAddress]) {
+      if (!worksheet[cellAddress].s) {
+        worksheet[cellAddress].s = {};
+      }
+      worksheet[cellAddress].s.font = { bold: true };
+      worksheet[cellAddress].s.fill = {
+        fgColor: { rgb: 'E0E0E0' }
+      };
+      worksheet[cellAddress].s.alignment = {
+        horizontal: 'center',
+        vertical: 'center'
+      };
+    }
+  }
   
   XLSX.utils.book_append_sheet(workbook, worksheet, 'הזמנות');
   
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  // Write with cell styles support
+  return XLSX.write(workbook, { 
+    type: 'buffer', 
+    bookType: 'xlsx',
+    cellStyles: true
+  });
 }
 
 async function generateWord(orders: any[]): Promise<Buffer> {
@@ -242,62 +275,9 @@ async function generateWord(orders: any[]): Promise<Buffer> {
   return await Packer.toBuffer(doc);
 }
 
-async function generatePDF(orders: any[]): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    // Use standard fonts that don't require external files
-    const doc = new PDFDocument({ 
-      margin: 50,
-      autoFirstPage: true
-    });
-    const buffers: Buffer[] = [];
-
-    doc.on('data', (chunk: Buffer) => buffers.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(buffers)));
-    doc.on('error', reject);
-
-    // Use default font (Helvetica) - don't specify font explicitly
-    doc.fontSize(20).text('Daily Orders Report', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Date: ${format(new Date(), 'MMMM dd, yyyy')}`);
-    doc.text(`Total Orders: ${orders.length}`);
-    doc.moveDown();
-
-    orders.forEach((order, index) => {
-      if (index > 0) doc.moveDown();
-      
-      doc.fontSize(14).text(`Order #${index + 1}`, { underline: true });
-      doc.fontSize(10);
-      doc.text(`Customer: ${order.customer_name}`);
-      if (order.customer_email) doc.text(`Email: ${order.customer_email}`);
-      if (order.customer_phone) doc.text(`Phone: ${order.customer_phone}`);
-      doc.moveDown(0.5);
-      
-      doc.text('Items:');
-      order.order_items.forEach((item: any) => {
-        doc.text(
-          `  • ${item.quantity}x ${item.menu_items.name} - ${item.price} ILS each = ${(item.quantity * item.price).toFixed(2)} ILS`,
-          { indent: 20 }
-        );
-      });
-      
-      doc.moveDown(0.5);
-      doc.fontSize(12).text(`Total: ${order.total_amount.toFixed(2)} ILS`, { align: 'right' });
-      
-      if (index < orders.length - 1) {
-        doc.moveDown();
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-        doc.moveDown();
-      }
-    });
-
-    doc.end();
-  });
-}
-
 async function sendEmail(
   excelBuffer: Buffer,
   wordBuffer: Buffer,
-  pdfBuffer: Buffer | null,
   orderCount: number
 ) {
   if (!process.env.SMTP_HOST) {
@@ -367,7 +347,6 @@ async function sendEmail(
         <ul>
           <li>Orders Report (Excel)</li>
           <li>Orders Report (Word)</li>
-          ${pdfBuffer ? '<li>Orders Report (PDF)</li>' : ''}
         </ul>
       `,
       attachments: [
@@ -379,10 +358,6 @@ async function sendEmail(
           filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.docx`,
           content: wordBuffer,
         },
-        ...(pdfBuffer ? [{
-          filename: `orders-${format(new Date(), 'yyyy-MM-dd')}.pdf`,
-          content: pdfBuffer,
-        }] : []),
       ],
     });
     console.log('=== DEBUG: Email Sent Successfully ===');

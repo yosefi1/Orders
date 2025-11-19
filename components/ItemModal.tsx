@@ -43,6 +43,7 @@ export default function ItemModal({ item, isOpen, onClose, onAdd, preSelectedVar
   };
 
   const handleAdd = () => {
+
     // For מאפים, require size selection
     if (item.category === 'מאפים' && !selectedVariation) {
       alert('אנא בחר גודל');
@@ -196,6 +197,31 @@ export default function ItemModal({ item, isOpen, onClose, onAdd, preSelectedVar
                   </label>
                 ))}
               </div>
+              
+              {/* רטבים לטוסט */}
+              {item.category === 'טוסטים' && (
+                <>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">
+                    רוטב:
+                  </label>
+                  <div className="space-y-2">
+                    {['רוטב פיצה', 'רוטב שום'].map((sauce) => (
+                      <label
+                        key={sauce}
+                        className="flex items-center p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedAddons.includes(sauce)}
+                          onChange={() => handleAddonToggle(sauce)}
+                          className="ml-2"
+                        />
+                        <span>{sauce}</span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

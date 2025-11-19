@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -118,6 +119,43 @@ export default function Dashboard() {
     }
   };
 
+  const handleSendArrivalEmails = async () => {
+    if (!isAdmin) {
+      alert('רק מנהל יכול לשלוח מיילים');
+      return;
+    }
+
+    if (!confirm(`האם אתה בטוח שברצונך לשלוח מייל לכל הלקוחות שהזמינו בתאריך ${filterDate}?\n\nזה ישלח מייל לכל הלקוחות עם כתובת אימייל.`)) {
+      return;
+    }
+
+    setIsSendingEmails(true);
+
+    try {
+      const response = await fetch('/api/orders/send-arrival-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: filterDate }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`נשלחו ${data.sentCount} מיילים בהצלחה${data.failedCount > 0 ? `, ${data.failedCount} נכשלו` : ''}`);
+        if (data.errors && data.errors.length > 0) {
+          console.error('Email errors:', data.errors);
+        }
+      } else {
+        alert(`שגיאה בשליחת מיילים: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      console.error('Error sending arrival emails:', error);
+      alert(`שגיאה בשליחת מיילים: ${error.message}`);
+    } finally {
+      setIsSendingEmails(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-50" dir="rtl">
       {/* Header */}
@@ -168,6 +206,15 @@ export default function Dashboard() {
             >
               📥 הורד הזמנות
             </button>
+            {isAdmin && (
+              <button
+                onClick={handleSendArrivalEmails}
+                disabled={isSendingEmails || orders.length === 0}
+                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isSendingEmails ? 'שולח מיילים...' : '📧 שלח הודעה שההזמנה הגיעה'}
+              </button>
+            )}
             {!isAdmin && (
               <button
                 onClick={() => setShowAdminModal(true)}

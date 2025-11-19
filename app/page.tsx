@@ -6,17 +6,34 @@ import InfoSection from "@/components/InfoSection";
 import CategoryMenu from "@/components/CategoryMenu";
 import CategoryModal from "@/components/CategoryModal";
 import DrinksMenu from "@/components/DrinksMenu";
+import OrderTimeModal from "@/components/OrderTimeModal";
 import Image from "next/image";
 
 import { MenuItem } from '@/types/menu';
+
+// Check if current time is after 10:30
+function isOrderTimePassed(): boolean {
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  
+  // Check if time is after 10:30 (10:30:00 or later)
+  return hours > 10 || (hours === 10 && minutes >= 30);
+}
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showOrderTimeModal, setShowOrderTimeModal] = useState(false);
 
   useEffect(() => {
     fetchMenuItems();
+    
+    // Check if order time has passed and show modal
+    if (isOrderTimePassed()) {
+      setShowOrderTimeModal(true);
+    }
   }, []);
 
   const fetchMenuItems = async () => {
@@ -98,7 +115,9 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <InfoSection />
-            <CategoryMenu onSelectCategory={(cat) => setSelectedCategory(cat)} />
+            <CategoryMenu 
+              onSelectCategory={(cat) => setSelectedCategory(cat)} 
+            />
             
             {selectedCategory && selectedCategory !== 'שתייה קרה' && (
               <CategoryModal
@@ -144,6 +163,11 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      <OrderTimeModal 
+        isOpen={showOrderTimeModal}
+        onClose={() => setShowOrderTimeModal(false)}
+      />
     </main>
   );
 }

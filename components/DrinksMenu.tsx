@@ -21,6 +21,7 @@ export default function DrinksMenu({ items, onClose }: DrinksMenuProps) {
   };
 
   const handleConfirmAdd = () => {
+
     if (selectedItem) {
       addToCart({
         id: selectedItem.id,

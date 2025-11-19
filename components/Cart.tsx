@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useCart } from '@/contexts/CartContext';
 import OrderSuccessModal from './OrderSuccessModal';
+import OrderTimeModal from './OrderTimeModal';
 
 const MIN_ORDER_AMOUNT = 24;
 
@@ -14,11 +15,26 @@ export default function Cart() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showOrderTimeModal, setShowOrderTimeModal] = useState(false);
   const [orderId, setOrderId] = useState<string>('');
+
+  // Check if order time has passed
+  const isOrderTimePassed = (): boolean => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    return hours > 10 || (hours === 10 && minutes >= 30);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
+
+    // Check if order time has passed
+    if (isOrderTimePassed()) {
+      setShowOrderTimeModal(true);
+      return;
+    }
 
     if (cart.length === 0) {
       setMessage({ type: 'error', text: 'העגלה ריקה' });
@@ -35,6 +51,16 @@ export default function Cart() {
 
     if (!customerName.trim()) {
       setMessage({ type: 'error', text: 'אנא הזן את שמך' });
+      return;
+    }
+
+    if (!customerEmail.trim()) {
+      setMessage({ type: 'error', text: 'אנא הזן את כתובת האימייל שלך' });
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      setMessage({ type: 'error', text: 'אנא הזן את מספר הטלפון שלך' });
       return;
     }
 
@@ -206,12 +232,13 @@ export default function Cart() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                אימייל
+                אימייל <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="your@email.com"
               />
@@ -219,12 +246,13 @@ export default function Cart() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                טלפון
+                טלפון <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="050-1234567"
               />
@@ -258,6 +286,11 @@ export default function Cart() {
         onClose={() => setShowSuccessModal(false)}
         orderId={orderId}
         customerName={customerName}
+      />
+
+      <OrderTimeModal 
+        isOpen={showOrderTimeModal}
+        onClose={() => setShowOrderTimeModal(false)}
       />
     </div>
   );
