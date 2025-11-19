@@ -14,6 +14,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if the date is Friday (5) or Saturday (6)
+    const selectedDate = new Date(date);
+    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+    
+    if (dayOfWeek === 5 || dayOfWeek === 6) {
+      return NextResponse.json({
+        success: false,
+        message: 'Cannot send arrival emails on Friday or Saturday',
+        sentCount: 0,
+      });
+    }
+
     // Fetch all orders for the specified date
     const ordersResult = await sql`
       SELECT * FROM orders
