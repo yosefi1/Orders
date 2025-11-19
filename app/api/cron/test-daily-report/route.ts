@@ -5,8 +5,23 @@ import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType } fr
 import nodemailer from 'nodemailer';
 import { format } from 'date-fns';
 
-// This endpoint doesn't require CRON_SECRET - for manual testing
+// This endpoint requires CRON_SECRET to prevent unauthorized access
+function verifyCronSecret(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  
+  if (!cronSecret) {
+    return false;
+  }
+  
+  return authHeader === `Bearer ${cronSecret}`;
+}
+
 export async function GET(request: NextRequest) {
+  // Verify this is a legitimate cron request
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const today = format(new Date(), 'yyyy-MM-dd');
 
