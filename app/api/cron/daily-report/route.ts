@@ -99,8 +99,12 @@ async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
     { header: 'כמות', key: 'quantity', width: 8 },
     { header: 'תוספות', key: 'addons', width: 25 },
     { header: 'הוראות מיוחדות', key: 'instructions', width: 20 },
-    { header: 'תאריך', key: 'date', width: 12 },
   ];
+
+  // Set page orientation to landscape
+  worksheet.pageSetup = {
+    orientation: 'landscape',
+  };
 
   // Style header row
   const headerRow = worksheet.getRow(1);
@@ -115,6 +119,8 @@ async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
   // Add data rows
   orders.forEach((order) => {
     if (order.order_items && order.order_items.length > 0) {
+      const firstRowNumber = worksheet.rowCount + 1;
+      
       order.order_items.forEach((item: any, index: number) => {
         const addons = item.selected_addons && Array.isArray(item.selected_addons) 
           ? item.selected_addons.join(', ') 
@@ -127,32 +133,17 @@ async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
           quantity: item.quantity,
           addons: addons,
           instructions: item.special_instructions || '',
-          date: index === 0 ? new Date(order.created_at).toLocaleDateString('he-IL') : '',
         });
+      });
 
-        // Merge cells for customer info if multiple items
-        if (order.order_items.length > 1) {
-          if (index === 0) {
-            // Merge customer name
-            worksheet.mergeCells(`A${row.number}:A${row.number + order.order_items.length - 1}`);
-            // Merge phone
-            worksheet.mergeCells(`B${row.number}:B${row.number + order.order_items.length - 1}`);
-            // Merge date
-            worksheet.mergeCells(`G${row.number}:G${row.number + order.order_items.length - 1}`);
-          }
-        }
-      });
-    } else {
-      // If no items, still show the order
-      worksheet.addRow({
-        customerName: order.customer_name,
-        phone: order.customer_phone || '',
-        item: '',
-        quantity: '',
-        addons: '',
-        instructions: '',
-        date: new Date(order.created_at).toLocaleDateString('he-IL'),
-      });
+      // Merge cells for customer info (name and phone) across all rows of this order
+      if (order.order_items.length > 1) {
+        const lastRowNumber = worksheet.rowCount;
+        // Merge customer name
+        worksheet.mergeCells(`A${firstRowNumber}:A${lastRowNumber}`);
+        // Merge phone
+        worksheet.mergeCells(`B${firstRowNumber}:B${lastRowNumber}`);
+      }
     }
   });
 
