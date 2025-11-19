@@ -73,7 +73,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate Excel file
-    const excelBuffer = await generateExcel(orders);
+    const excelBufferRaw = await generateExcel(orders);
+    const excelBuffer = Buffer.isBuffer(excelBufferRaw) ? excelBufferRaw : Buffer.from(excelBufferRaw);
     
     // Generate Word document
     const wordBuffer = await generateWord(orders);
