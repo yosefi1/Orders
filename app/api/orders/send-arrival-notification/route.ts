@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-
     // Send email to each customer
     const results = {
       sent: 0,
