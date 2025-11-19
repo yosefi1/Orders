@@ -339,6 +339,13 @@ async function sendEmail(
     .map(email => email.trim())
     .filter(email => email.length > 0);
 
+  // Debug logging
+  console.log('=== DEBUG: Email Configuration ===');
+  console.log('SUPPLIER_EMAIL from env:', supplierEmail);
+  console.log('Parsed recipient emails:', recipientEmails);
+  console.log('Number of recipients:', recipientEmails.length);
+  console.log('===================================');
+
   // Determine from address and name
   const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
   const emailFromName = process.env.EMAIL_FROM_NAME || 'קפיטריית אינטל';
@@ -378,12 +385,22 @@ async function sendEmail(
         }] : []),
       ],
     });
+    console.log('=== DEBUG: Email Sent Successfully ===');
+    console.log(`Recipients: ${recipientEmails.join(', ')}`);
+    console.log(`Number of recipients: ${recipientEmails.length}`);
+    console.log(`Order count: ${orderCount}`);
+    console.log(`From address: ${fromAddress}`);
+    console.log(`Subject: Daily Orders Report - ${format(new Date(), 'MMMM dd, yyyy')} (${orderCount} orders)`);
+    console.log('=====================================');
     console.log(`Daily report email sent successfully to ${recipientEmails.join(', ')}`);
   } catch (error: any) {
-    console.error('Error sending daily report email:', {
-      error: error.message,
-      code: error.code,
-    });
+    console.error('=== DEBUG: Email Send Error ===');
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Recipients attempted:', recipientEmails);
+    console.error('From address:', fromAddress);
+    console.error('Full error:', error);
+    console.error('===============================');
     throw error;
   }
 }
