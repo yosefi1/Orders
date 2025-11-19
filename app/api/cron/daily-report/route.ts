@@ -116,10 +116,13 @@ async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
   };
   headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  // Add data rows
+  // Add data rows with alternating colors
+  let orderIndex = 0;
   orders.forEach((order) => {
     if (order.order_items && order.order_items.length > 0) {
       const firstRowNumber = worksheet.rowCount + 1;
+      const isEvenOrder = orderIndex % 2 === 0;
+      const rowColor = isEvenOrder ? undefined : { argb: 'FFE8E8E8' }; // Light gray for odd orders
       
       order.order_items.forEach((item: any, index: number) => {
         const addons = item.selected_addons && Array.isArray(item.selected_addons) 
@@ -134,6 +137,17 @@ async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
           addons: addons,
           instructions: item.special_instructions || '',
         });
+
+        // Apply background color to all cells in this row
+        if (rowColor) {
+          row.eachCell({ includeEmpty: false }, (cell) => {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: rowColor,
+            };
+          });
+        }
       });
 
       // Merge cells for customer info (name and phone) across all rows of this order
@@ -144,6 +158,8 @@ async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
         // Merge phone
         worksheet.mergeCells(`B${firstRowNumber}:B${lastRowNumber}`);
       }
+
+      orderIndex++;
     }
   });
 
