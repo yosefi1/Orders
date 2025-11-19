@@ -62,7 +62,7 @@ const MOCK_MENU_ITEMS = [
     category: 'טוסטים',
     has_addons: true,
     has_variations: false,
-    addons: ['תירס', 'עגבניה', 'טונה', 'זיתים', 'בצל', 'גמבה', 'בולגרית', 'חריף'],
+    addons: ['תירס', 'עגבניה', 'טונה', 'זיתים', 'בצל', 'גמבה', 'חריף'],
     variations: null,
     available: true,
   },

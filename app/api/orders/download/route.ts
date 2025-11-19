@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType } from 'docx';
-import PDFDocument from 'pdfkit';
 import { format as formatDate } from 'date-fns';
 
 export async function GET(request: NextRequest) {
@@ -79,15 +78,6 @@ export async function GET(request: NextRequest) {
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-        },
-      });
-    } else if (format === 'pdf') {
-      const buffer = await generatePDF(orders);
-      const filename = `orders-${date || 'all'}-${today}.pdf`;
-      return new NextResponse(new Uint8Array(buffer), {
-        headers: {
-          'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="${filename}"`,
         },
       });
@@ -169,10 +159,53 @@ function generateExcel(orders: any[]) {
   if (merges.length > 0) {
     worksheet['!merges'] = merges;
   }
+
+  // Add borders to all cells
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!worksheet[cellAddress]) {
+        worksheet[cellAddress] = { v: '', t: 's' };
+      }
+      if (!worksheet[cellAddress].s) {
+        worksheet[cellAddress].s = {};
+      }
+      worksheet[cellAddress].s.border = {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } },
+      };
+    }
+  }
+
+  // Style header row (bold and background color)
+  for (let C = range.s.c; C <= range.e.c; ++C) {
+    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (worksheet[cellAddress]) {
+      if (!worksheet[cellAddress].s) {
+        worksheet[cellAddress].s = {};
+      }
+      worksheet[cellAddress].s.font = { bold: true };
+      worksheet[cellAddress].s.fill = {
+        fgColor: { rgb: 'E0E0E0' }
+      };
+      worksheet[cellAddress].s.alignment = {
+        horizontal: 'center',
+        vertical: 'center'
+      };
+    }
+  }
   
   XLSX.utils.book_append_sheet(workbook, worksheet, 'הזמנות');
   
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  // Write with cell styles support
+  return XLSX.write(workbook, { 
+    type: 'buffer', 
+    bookType: 'xlsx',
+    cellStyles: true
+  });
 }
 
 async function generateWord(orders: any[]): Promise<Buffer> {
@@ -249,74 +282,4 @@ async function generateWord(orders: any[]): Promise<Buffer> {
   return await Packer.toBuffer(doc);
 }
 
-async function generatePDF(orders: any[]): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
-    const buffers: Buffer[] = [];
-
-    doc.on('data', buffers.push.bind(buffers));
-    doc.on('end', () => {
-      resolve(Buffer.concat(buffers));
-    });
-    doc.on('error', reject);
-
-    doc.fontSize(20).text('דוח הזמנות', { align: 'center' });
-    doc.moveDown(2);
-
-    orders.forEach((order, index) => {
-      // Order header box
-      doc.rect(50, doc.y, 500, 20).stroke();
-      doc.fontSize(14).text(`הזמנה #${index + 1} - ${order.id.slice(0, 8)}`, 55, doc.y - 15);
-      doc.moveDown(1.5);
-
-      // Customer info
-      doc.fontSize(12);
-      doc.text(`שם: ${order.customer_name}`, { indent: 20 });
-      if (order.customer_phone) {
-        doc.text(`טלפון: ${order.customer_phone}`, { indent: 20 });
-      }
-      if (order.customer_email) {
-        doc.text(`אימייל: ${order.customer_email}`, { indent: 20 });
-      }
-      doc.text(`תאריך: ${new Date(order.created_at).toLocaleDateString('he-IL')}`, { indent: 20 });
-      doc.text(`סטטוס: ${order.status}`, { indent: 20 });
-      doc.moveDown(0.5);
-
-      // Order items
-      if (order.order_items && order.order_items.length > 0) {
-        doc.fontSize(11).text('פריטים:', { indent: 20 });
-        order.order_items.forEach((item: any) => {
-          const itemPrice = parseFloat(String(item.price || 0));
-          let itemText = `• ${item.quantity}x ${item.menu_items?.name || ''} - ${itemPrice.toFixed(2)} ₪`;
-          if (item.selected_variation) {
-            itemText += ` (${item.selected_variation})`;
-          }
-          if (item.selected_addons && Array.isArray(item.selected_addons) && item.selected_addons.length > 0) {
-            itemText += ` [תוספות: ${item.selected_addons.join(', ')}]`;
-          }
-          if (item.special_instructions) {
-            itemText += ` [הוראות: ${item.special_instructions}]`;
-          }
-          doc.fontSize(10).text(itemText, { indent: 40 });
-        });
-      }
-
-      // Total
-      doc.moveDown(0.5);
-      doc.fontSize(12).text(`סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`, { 
-        indent: 20,
-        align: 'right'
-      });
-
-      // Separator
-      if (index < orders.length - 1) {
-        doc.moveDown(1);
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-        doc.moveDown(1);
-      }
-    });
-
-    doc.end();
-  });
-}
 

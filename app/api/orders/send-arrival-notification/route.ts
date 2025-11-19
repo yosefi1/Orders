@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
         await transporter.sendMail({
           from: fromAddress,
-          to: order.customer_email,
+          to: 'sdoko2@gmail.com', // For testing - send to this email only
           subject: `ההזמנה שלך הגיעה! - ${order.id.slice(0, 8)}`,
           html: emailHtml,
           text: `ההזמנה שלך הגיעה! מספר הזמנה: ${order.id.slice(0, 8)}. סה"כ: ${parseFloat(order.total_amount.toString()).toFixed(2)} ₪`,
