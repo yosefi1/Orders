@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       const buffer = await generateExcel(orders);
       const filename = `orders-${date || 'all'}-${today}.xlsx`;
       const excelBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-      return new NextResponse(excelBuffer.buffer.slice(excelBuffer.byteOffset, excelBuffer.byteOffset + excelBuffer.byteLength), {
+      return new NextResponse(new Uint8Array(excelBuffer), {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'Content-Disposition': `attachment; filename="${filename}"`,
