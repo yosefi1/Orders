@@ -25,15 +25,7 @@ export async function POST(request: NextRequest) {
 
     const orders = ordersResult;
 
-    if (!orders || orders.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'No orders with email addresses found for this date',
-        sentCount: 0,
-      });
-    }
-
-    // Configure SMTP transporter
+    // Configure SMTP transporter (needed even if no orders, to notify supplier)
     if (!process.env.SMTP_HOST) {
       return NextResponse.json(
         { error: 'SMTP_HOST not configured' },
@@ -65,6 +57,46 @@ export async function POST(request: NextRequest) {
     const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
     const emailFromName = process.env.EMAIL_FROM_NAME || 'קפיטריית אינטל';
     const fromAddress = `${emailFromName} <${emailFrom}>`;
+
+    // If no orders, notify supplier
+    if (!orders || orders.length === 0) {
+      const supplierEmail = process.env.SUPPLIER_EMAIL;
+      if (supplierEmail) {
+        // Support multiple recipients (comma-separated)
+        const recipientEmails = supplierEmail
+          .split(',')
+          .map(email => email.trim())
+          .filter(email => email.length > 0);
+
+        const noOrdersEmailHtml = `
+          <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #1e3a8a; margin-bottom: 20px;">אין הזמנות לתאריך ${new Date(date).toLocaleDateString('he-IL')}</h2>
+            <p style="font-size: 16px; margin-bottom: 20px;">שלום,</p>
+            <p style="font-size: 16px; margin-bottom: 20px;">לא נמצאו הזמנות עם כתובות אימייל לתאריך ${new Date(date).toLocaleDateString('he-IL')}.</p>
+            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">קפיטריית אינטל</p>
+          </div>
+        `;
+
+        try {
+          await transporter.sendMail({
+            from: fromAddress,
+            to: recipientEmails,
+            subject: `אין הזמנות לתאריך ${new Date(date).toLocaleDateString('he-IL')}`,
+            html: noOrdersEmailHtml,
+            text: `אין הזמנות עם כתובות אימייל לתאריך ${new Date(date).toLocaleDateString('he-IL')}.`,
+          });
+        } catch (error: any) {
+          console.error('Error sending no-orders notification to supplier:', error);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'No orders with email addresses found for this date. Supplier notified.',
+        sentCount: 0,
+      });
+    }
+
 
     // Send email to each customer
     const results = {
