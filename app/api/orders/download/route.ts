@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType } from 'docx';
 import { format as formatDate } from 'date-fns';
 
@@ -64,9 +64,9 @@ export async function GET(request: NextRequest) {
     // Generate file based on format
     const today = formatDate(new Date(), 'yyyy-MM-dd');
     if (format === 'excel') {
-      const buffer = generateExcel(orders);
+      const buffer = await generateExcel(orders);
       const filename = `orders-${date || 'all'}-${today}.xlsx`;
-      return new NextResponse(new Uint8Array(buffer), {
+      return new NextResponse(buffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'Content-Disposition': `attachment; filename="${filename}"`,
@@ -92,132 +92,89 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function generateExcel(orders: any[]) {
-  const workbook = XLSX.utils.book_new();
-  
-  const worksheetData = [
-    ['שם לקוח', 'טלפון', 'פריט', 'כמות', 'תוספות', 'הוראות מיוחדות', 'תאריך'],
+async function generateExcel(orders: any[]): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('הזמנות');
+
+  // Set column headers and widths
+  worksheet.columns = [
+    { header: 'שם לקוח', key: 'customerName', width: 15 },
+    { header: 'טלפון', key: 'phone', width: 12 },
+    { header: 'פריט', key: 'item', width: 20 },
+    { header: 'כמות', key: 'quantity', width: 8 },
+    { header: 'תוספות', key: 'addons', width: 25 },
+    { header: 'הוראות מיוחדות', key: 'instructions', width: 20 },
+    { header: 'תאריך', key: 'date', width: 12 },
   ];
 
-  let currentRow = 1; // Start from row 1 (0-indexed, so row 1 is after header)
-  const merges: any[] = [];
+  // Style header row
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFE0E0E0' }
+  };
+  headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
+  // Add data rows
   orders.forEach((order) => {
-    const orderStartRow = currentRow;
-    let orderRowCount = 0;
-
     if (order.order_items && order.order_items.length > 0) {
-      order.order_items.forEach((item: any) => {
-        const itemPrice = parseFloat(String(item.price || 0));
-        const subtotal = itemPrice * item.quantity;
+      order.order_items.forEach((item: any, index: number) => {
         const addons = item.selected_addons && Array.isArray(item.selected_addons) 
           ? item.selected_addons.join(', ') 
           : '';
         
-        worksheetData.push([
-          order.customer_name,
-          order.customer_phone || '',
-          item.menu_items?.name || '',
-          item.quantity,
-          addons,
-          item.special_instructions || '',
-          new Date(order.created_at).toLocaleDateString('he-IL'),
-        ]);
-        currentRow++;
-        orderRowCount++;
+        const row = worksheet.addRow({
+          customerName: index === 0 ? order.customer_name : '',
+          phone: index === 0 ? (order.customer_phone || '') : '',
+          item: item.menu_items?.name || '',
+          quantity: item.quantity,
+          addons: addons,
+          instructions: item.special_instructions || '',
+          date: index === 0 ? new Date(order.created_at).toLocaleDateString('he-IL') : '',
+        });
+
+        // Merge cells for customer info if multiple items
+        if (order.order_items.length > 1) {
+          if (index === 0) {
+            // Merge customer name
+            worksheet.mergeCells(`A${row.number}:A${row.number + order.order_items.length - 1}`);
+            // Merge phone
+            worksheet.mergeCells(`B${row.number}:B${row.number + order.order_items.length - 1}`);
+            // Merge date
+            worksheet.mergeCells(`G${row.number}:G${row.number + order.order_items.length - 1}`);
+          }
+        }
       });
     } else {
       // If no items, still show the order
-      worksheetData.push([
-        order.customer_name,
-        order.customer_phone || '',
-        '',
-        '',
-        '',
-        '',
-        new Date(order.created_at).toLocaleDateString('he-IL'),
-      ]);
-      currentRow++;
-      orderRowCount++;
-    }
-
-    // Merge cells for customer info columns - columns are 0-indexed
-    // Column A (0) = שם לקוח, Column B (1) = טלפון, Column F (5) = תאריך
-    if (orderRowCount > 1) {
-      // Merge customer name (column A = 0)
-      merges.push({ s: { r: orderStartRow, c: 0 }, e: { r: orderStartRow + orderRowCount - 1, c: 0 } });
-      // Merge phone (column B = 1)
-      merges.push({ s: { r: orderStartRow, c: 1 }, e: { r: orderStartRow + orderRowCount - 1, c: 1 } });
-      // Merge date (column F = 6)
-      merges.push({ s: { r: orderStartRow, c: 6 }, e: { r: orderStartRow + orderRowCount - 1, c: 6 } });
+      worksheet.addRow({
+        customerName: order.customer_name,
+        phone: order.customer_phone || '',
+        item: '',
+        quantity: '',
+        addons: '',
+        instructions: '',
+        date: new Date(order.created_at).toLocaleDateString('he-IL'),
+      });
     }
   });
-
-  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-  
-  // Apply merges
-  if (merges.length > 0) {
-    worksheet['!merges'] = merges;
-  }
 
   // Add borders to all cells
-  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-  for (let R = range.s.r; R <= range.e.r; ++R) {
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-      if (!worksheet[cellAddress]) {
-        worksheet[cellAddress] = { v: '', t: 's' };
-      }
-      if (!worksheet[cellAddress].s) {
-        worksheet[cellAddress].s = {};
-      }
-      worksheet[cellAddress].s.border = {
-        top: { style: 'thin', color: { rgb: '000000' } },
-        bottom: { style: 'thin', color: { rgb: '000000' } },
-        left: { style: 'thin', color: { rgb: '000000' } },
-        right: { style: 'thin', color: { rgb: '000000' } },
+  worksheet.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } },
       };
-    }
-  }
-
-  // Style header row (bold and background color)
-  for (let C = range.s.c; C <= range.e.c; ++C) {
-    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (worksheet[cellAddress]) {
-      if (!worksheet[cellAddress].s) {
-        worksheet[cellAddress].s = {};
-      }
-      worksheet[cellAddress].s.font = { bold: true };
-      worksheet[cellAddress].s.fill = {
-        fgColor: { rgb: 'E0E0E0' }
-      };
-      worksheet[cellAddress].s.alignment = {
-        horizontal: 'center',
-        vertical: 'center'
-      };
-    }
-  }
-  
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'הזמנות');
-  
-  // Set default column widths
-  worksheet['!cols'] = [
-    { wch: 15 }, // שם לקוח
-    { wch: 12 }, // טלפון
-    { wch: 20 }, // פריט
-    { wch: 8 },  // כמות
-    { wch: 25 }, // תוספות
-    { wch: 20 }, // הוראות מיוחדות
-    { wch: 12 }, // תאריך
-  ];
-
-  // Write with cell styles support
-  return XLSX.write(workbook, { 
-    type: 'buffer', 
-    bookType: 'xlsx',
-    cellStyles: true,
-    bookSST: false
+    });
   });
+
+  // Generate buffer
+  return await workbook.xlsx.writeBuffer();
 }
 
 async function generateWord(orders: any[]): Promise<Buffer> {
