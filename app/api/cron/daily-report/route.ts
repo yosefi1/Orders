@@ -36,8 +36,13 @@ export async function GET(request: NextRequest) {
     const orders = ordersResult;
 
     if (!orders || orders.length === 0) {
-      console.log('No orders for today, skipping email');
-      return NextResponse.json({ message: 'No orders for today' });
+      console.log('No orders for today, sending notification email');
+      // Send email even when there are no orders
+      await sendEmailNoOrders();
+      return NextResponse.json({ 
+        success: true,
+        message: 'No orders for today - notification email sent' 
+      });
     }
     
     console.log(`Found ${orders.length} orders for today, generating report...`);
@@ -252,6 +257,69 @@ async function generateWord(orders: any[]): Promise<Buffer> {
     }],
   });
   return await Packer.toBuffer(doc);
+}
+
+async function sendEmailNoOrders() {
+  if (!process.env.SMTP_HOST) {
+    throw new Error('SMTP_HOST not configured');
+  }
+
+  // Create SMTP transporter (same config as sendEmail)
+  const transporterConfig: any = {
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_PORT === '465',
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    tls: {
+      rejectUnauthorized: false,
+    },
+  };
+
+  if (process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+    transporterConfig.auth = {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
+    };
+  }
+
+  const transporter = nodemailer.createTransport(transporterConfig);
+
+  const supplierEmail = process.env.SUPPLIER_EMAIL;
+  if (!supplierEmail) {
+    throw new Error('SUPPLIER_EMAIL not configured');
+  }
+
+  const recipientEmails = supplierEmail
+    .split(',')
+    .map(email => email.trim())
+    .filter(email => email.length > 0);
+
+  const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
+  const emailFromName = process.env.EMAIL_FROM_NAME || 'קפיטריית אינטל';
+  const fromAddress = `${emailFromName} <${emailFrom}>`;
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress,
+      to: recipientEmails,
+      subject: `Daily Orders Report - ${format(new Date(), 'MMMM dd, yyyy')} (No Orders)`,
+      text: `No orders were placed today (${format(new Date(), 'MMMM dd, yyyy')}).`,
+      html: `
+        <h2>Daily Orders Report</h2>
+        <p>Date: ${format(new Date(), 'MMMM dd, yyyy')}</p>
+        <p><strong>No orders were placed today.</strong></p>
+      `,
+    });
+    console.log(`No orders notification email sent successfully to ${recipientEmails.join(', ')}`);
+  } catch (error: any) {
+    console.error('Error sending no orders notification email:', {
+      error: error.message,
+      code: error.code,
+    });
+    throw error;
+  }
 }
 
 async function sendEmail(
