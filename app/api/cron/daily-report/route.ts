@@ -65,6 +65,9 @@ export async function GET(request: NextRequest) {
       order.order_items = itemsResult.map((row: any) => ({
         quantity: row.quantity,
         price: parseFloat(row.price),
+        selected_addons: row.selected_addons,
+        selected_variation: row.selected_variation,
+        special_instructions: row.special_instructions,
         menu_items: { name: row.name }
       }));
     }
