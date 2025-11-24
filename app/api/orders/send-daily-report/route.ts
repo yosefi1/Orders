@@ -78,6 +78,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Sort addons: put "רוטב" items first
+function sortAddons(addons: string[]): string[] {
+  if (!Array.isArray(addons)) return [];
+  const sauces = addons.filter(addon => addon && addon.includes('רוטב'));
+  const others = addons.filter(addon => addon && !addon.includes('רוטב'));
+  return [...sauces, ...others];
+}
+
 async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('הזמנות');
@@ -116,9 +124,10 @@ async function generateExcel(orders: any[]): Promise<Buffer | ArrayBuffer> {
       const rowColor = isEvenOrder ? undefined : { argb: 'FFE8E8E8' }; // Light gray for odd orders
       
       order.order_items.forEach((item: any, index: number) => {
-        const addons = item.selected_addons && Array.isArray(item.selected_addons) 
-          ? item.selected_addons.join(', ') 
-          : '';
+        const sortedAddons = item.selected_addons && Array.isArray(item.selected_addons) 
+          ? sortAddons(item.selected_addons)
+          : [];
+        const addons = sortedAddons.join(', ');
         
         const row = worksheet.addRow({
           customerName: index === 0 ? order.customer_name : '',
@@ -215,7 +224,8 @@ async function generateWord(orders: any[]): Promise<Buffer> {
           itemText += ` (${item.selected_variation})`;
         }
         if (item.selected_addons && Array.isArray(item.selected_addons) && item.selected_addons.length > 0) {
-          itemText += ` [תוספות: ${item.selected_addons.join(', ')}]`;
+          const sortedAddons = sortAddons(item.selected_addons);
+          itemText += ` [תוספות: ${sortedAddons.join(', ')}]`;
         }
         if (item.special_instructions) {
           itemText += ` [הוראות: ${item.special_instructions}]`;
