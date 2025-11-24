@@ -289,9 +289,15 @@ async function sendEmailNoOrders() {
 
   const transporter = nodemailer.createTransport(transporterConfig);
 
-  // Use yosef.tal@altera.com as supplier email
-  const supplierEmail = 'yosef.tal@altera.com';
-  const recipientEmails = [supplierEmail];
+  const supplierEmail = process.env.SUPPLIER_EMAIL;
+  if (!supplierEmail) {
+    throw new Error('SUPPLIER_EMAIL not configured');
+  }
+
+  const recipientEmails = supplierEmail
+    .split(',')
+    .map(email => email.trim())
+    .filter(email => email.length > 0);
 
   const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
   const emailFromName = process.env.EMAIL_FROM_NAME || 'קפיטריית אינטל';
@@ -351,9 +357,17 @@ async function sendEmail(
 
   const transporter = nodemailer.createTransport(transporterConfig);
 
-  // Use yosef.tal@altera.com as supplier email
-  const supplierEmail = 'yosef.tal@altera.com';
-  const recipientEmails = [supplierEmail];
+  const supplierEmail = process.env.SUPPLIER_EMAIL;
+  if (!supplierEmail) {
+    throw new Error('SUPPLIER_EMAIL not configured');
+  }
+
+  // Support multiple recipients (comma-separated or array)
+  // Split by comma and trim whitespace, then filter out empty strings
+  const recipientEmails = supplierEmail
+    .split(',')
+    .map(email => email.trim())
+    .filter(email => email.length > 0);
 
   // Debug logging
   console.log('=== DEBUG: Email Configuration ===');
