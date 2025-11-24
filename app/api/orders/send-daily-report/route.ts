@@ -1,28 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import ExcelJS from 'exceljs';
-import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType } from 'docx';
+import { Document, Packer, Paragraph } from 'docx';
 import nodemailer from 'nodemailer';
 import { format } from 'date-fns';
 
-// Verify cron secret
-function verifyCronSecret(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  
-  if (!cronSecret) {
-    return false;
-  }
-  
-  return authHeader === `Bearer ${cronSecret}`;
-}
-
-export async function GET(request: NextRequest) {
-  // Verify this is a legitimate cron request
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function POST(request: NextRequest) {
   try {
     const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -291,7 +274,6 @@ async function sendEmailNoOrders() {
 
   // Use yosef.tal@altera.com as supplier email
   const supplierEmail = 'yosef.tal@altera.com';
-  const recipientEmails = [supplierEmail];
 
   const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
   const emailFromName = process.env.EMAIL_FROM_NAME || 'קפיטריית אינטל';
@@ -300,7 +282,7 @@ async function sendEmailNoOrders() {
   try {
     await transporter.sendMail({
       from: fromAddress,
-      to: recipientEmails,
+      to: supplierEmail,
       subject: `Daily Orders Report - ${format(new Date(), 'MMMM dd, yyyy')} (No Orders)`,
       text: `No orders were placed today (${format(new Date(), 'MMMM dd, yyyy')}).`,
       html: `
@@ -309,7 +291,7 @@ async function sendEmailNoOrders() {
         <p><strong>No orders were placed today.</strong></p>
       `,
     });
-    console.log(`No orders notification email sent successfully to ${recipientEmails.join(', ')}`);
+    console.log(`No orders notification email sent successfully to ${supplierEmail}`);
   } catch (error: any) {
     console.error('Error sending no orders notification email:', {
       error: error.message,
@@ -332,12 +314,12 @@ async function sendEmail(
   const transporterConfig: any = {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+    secure: process.env.SMTP_PORT === '465',
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 10000,
     tls: {
-      rejectUnauthorized: false, // For some SMTP servers
+      rejectUnauthorized: false,
     },
   };
 
@@ -353,14 +335,6 @@ async function sendEmail(
 
   // Use yosef.tal@altera.com as supplier email
   const supplierEmail = 'yosef.tal@altera.com';
-  const recipientEmails = [supplierEmail];
-
-  // Debug logging
-  console.log('=== DEBUG: Email Configuration ===');
-  console.log('SUPPLIER_EMAIL from env:', supplierEmail);
-  console.log('Parsed recipient emails:', recipientEmails);
-  console.log('Number of recipients:', recipientEmails.length);
-  console.log('===================================');
 
   // Determine from address and name
   const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_USER || 'cafeteria-orders@intel.com';
@@ -372,7 +346,7 @@ async function sendEmail(
   try {
     await transporter.sendMail({
       from: fromAddress,
-      to: recipientEmails,
+      to: supplierEmail,
       subject: `Daily Orders Report - ${format(new Date(), 'MMMM dd, yyyy')} (${orderCount} orders)`,
       text: `Please find attached the daily orders report with ${orderCount} orders.`,
       html: `
@@ -396,22 +370,12 @@ async function sendEmail(
         },
       ],
     });
-    console.log('=== DEBUG: Email Sent Successfully ===');
-    console.log(`Recipients: ${recipientEmails.join(', ')}`);
-    console.log(`Number of recipients: ${recipientEmails.length}`);
-    console.log(`Order count: ${orderCount}`);
-    console.log(`From address: ${fromAddress}`);
-    console.log(`Subject: Daily Orders Report - ${format(new Date(), 'MMMM dd, yyyy')} (${orderCount} orders)`);
-    console.log('=====================================');
-    console.log(`Daily report email sent successfully to ${recipientEmails.join(', ')}`);
+    console.log(`Daily report email sent successfully to ${supplierEmail}`);
   } catch (error: any) {
-    console.error('=== DEBUG: Email Send Error ===');
-    console.error('Error message:', error.message);
-    console.error('Error code:', error.code);
-    console.error('Recipients attempted:', recipientEmails);
-    console.error('From address:', fromAddress);
-    console.error('Full error:', error);
-    console.error('===============================');
+    console.error('Error sending daily report email:', {
+      error: error.message,
+      code: error.code,
+    });
     throw error;
   }
 }

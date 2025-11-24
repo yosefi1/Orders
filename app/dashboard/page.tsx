@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [isSendingEmails, setIsSendingEmails] = useState(false);
+  const [isSendingDailyReport, setIsSendingDailyReport] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -156,6 +157,40 @@ export default function Dashboard() {
     }
   };
 
+  const handleSendDailyReport = async () => {
+    if (!isAdmin) {
+      alert('רק מנהל יכול לשלוח דוח יומי');
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    if (!confirm(`האם אתה בטוח שברצונך לשלוח דוח יומי לספק עבור תאריך ${today}?`)) {
+      return;
+    }
+
+    setIsSendingDailyReport(true);
+
+    try {
+      const response = await fetch('/api/orders/send-daily-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`דוח יומי נשלח בהצלחה לספק!\n${data.message || ''}`);
+      } else {
+        alert(`שגיאה בשליחת דוח יומי: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      console.error('Error sending daily report:', error);
+      alert(`שגיאה בשליחת דוח יומי: ${error.message}`);
+    } finally {
+      setIsSendingDailyReport(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-50" dir="rtl">
       {/* Header */}
@@ -207,13 +242,22 @@ export default function Dashboard() {
               📥 הורד הזמנות
             </button>
             {isAdmin && (
-              <button
-                onClick={handleSendArrivalEmails}
-                disabled={isSendingEmails || orders.length === 0}
-                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isSendingEmails ? 'שולח מיילים...' : '📧 שלח הודעה שההזמנה הגיעה'}
-              </button>
+              <>
+                <button
+                  onClick={handleSendDailyReport}
+                  disabled={isSendingDailyReport}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isSendingDailyReport ? 'שולח דוח...' : '📧 שלח דוח יומי לספק'}
+                </button>
+                <button
+                  onClick={handleSendArrivalEmails}
+                  disabled={isSendingEmails || orders.length === 0}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isSendingEmails ? 'שולח מיילים...' : '📧 שלח הודעה שההזמנה הגיעה'}
+                </button>
+              </>
             )}
             {!isAdmin && (
               <button
