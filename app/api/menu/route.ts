@@ -71,7 +71,7 @@ const MOCK_MENU_ITEMS = [
     id: '3',
     name: 'סלט אישי',
     description: 'סלט טרי ומזין',
-    price: 17.00,
+    price: 24.30,
     category: 'סלטים',
     has_addons: false,
     has_variations: true,

@@ -64,7 +64,7 @@ INSERT INTO menu_items (name, description, price, category, has_addons, has_vari
   ('פיצה', 'פיצה טרייה', 20.50, 'פיצה', false, false, NULL, NULL),
   
   -- סלטים
-  ('סלט אישי', 'סלט טרי ומזין', 17.00, 'סלטים', false, true,
+  ('סלט אישי', 'סלט טרי ומזין', 24.30, 'סלטים', false, true,
    NULL, '["סלט ישראלי", "סלט טונה", "סלט עם בולגרית"]'::jsonb),
   
   -- מאפה קטן
