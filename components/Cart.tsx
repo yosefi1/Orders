@@ -19,13 +19,11 @@ export default function Cart() {
   const [orderId, setOrderId] = useState<string>('');
 
   // Check if order time has passed
-  // TEMPORARILY DISABLED FOR DEBUGGING
   const isOrderTimePassed = (): boolean => {
-    // const now = new Date();
-    // const hours = now.getHours();
-    // const minutes = now.getMinutes();
-    // return hours > 10 || (hours === 10 && minutes >= 30);
-    return false; // TEMPORARILY DISABLED
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    return hours > 10 || (hours === 10 && minutes >= 30);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,11 +31,10 @@ export default function Cart() {
     setMessage(null);
 
     // Check if order time has passed
-    // TEMPORARILY DISABLED FOR DEBUGGING
-    // if (isOrderTimePassed()) {
-    //   setShowOrderTimeModal(true);
-    //   return;
-    // }
+    if (isOrderTimePassed()) {
+      setShowOrderTimeModal(true);
+      return;
+    }
 
     if (cart.length === 0) {
       setMessage({ type: 'error', text: 'העגלה ריקה' });
