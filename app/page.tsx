@@ -11,14 +11,14 @@ import Image from "next/image";
 
 import { MenuItem } from '@/types/menu';
 
-// Check if current time is after 10:30
+// Check if current time is after 10:33
 function isOrderTimePassed(): boolean {
   const now = new Date();
   const hours = now.getHours();
   const minutes = now.getMinutes();
   
-  // Check if time is after 10:30 (10:30:00 or later)
-  return hours > 10 || (hours === 10 && minutes >= 30);
+  // Check if time is after 10:33 (10:33:00 or later)
+  return hours > 10 || (hours === 10 && minutes >= 33);
 }
 
 export default function Home() {

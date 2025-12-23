@@ -23,7 +23,7 @@ export default function Cart() {
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    return hours > 10 || (hours === 10 && minutes >= 30);
+    return hours > 10 || (hours === 10 && minutes >= 33);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
