@@ -215,13 +215,24 @@ export default function Cart() {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4"
+            autoComplete="on"
+            name="food_order"
+          >
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="order-full_name"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 שם <span className="text-red-500">*</span>
               </label>
               <input
+                id="order-full_name"
+                name="full_name"
                 type="text"
+                autoComplete="name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 required
@@ -231,11 +242,18 @@ export default function Cart() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="order-email"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 אימייל <span className="text-red-500">*</span>
               </label>
               <input
+                id="order-email"
+                name="email"
                 type="email"
+                autoComplete="email"
+                inputMode="email"
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
                 required
@@ -245,11 +263,18 @@ export default function Cart() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="order-phone"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 טלפון <span className="text-red-500">*</span>
               </label>
               <input
+                id="order-phone"
+                name="phone"
                 type="tel"
+                autoComplete="tel"
+                inputMode="tel"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 required
