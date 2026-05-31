@@ -5,6 +5,7 @@ import { useCart } from '@/contexts/CartContext';
 import ItemModal from './ItemModal';
 
 import { MenuItem } from '@/types/menu';
+import { formatPrice, getPastryPrice, PASTRY_PRICE_LARGE, PASTRY_PRICE_SMALL } from '@/lib/prices';
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -94,7 +95,7 @@ export default function CategoryModal({
     // Calculate price for מאפים based on size
     let finalPrice = item.price;
     if (item.category === 'מאפים' && selectedVariation) {
-      finalPrice = selectedVariation === 'קטן' ? 4.50 : 8.30;
+      finalPrice = getPastryPrice(selectedVariation);
     }
 
     // Create display name with addons and variations
@@ -186,7 +187,7 @@ export default function CategoryModal({
                   : parseFloat(String((item as MenuItem).price || 0));
                 // For מאפים, show price based on variation
                 if (isVariation && (item as VariationItem).baseItem.category === 'מאפים') {
-                  price = (item as VariationItem).variation === 'קטן' ? 4.50 : 8.30;
+                  price = getPastryPrice((item as VariationItem).variation);
                 }
                 const description = isVariation ? (item as VariationItem).baseItem.description : (item as MenuItem).description;
                 const hasAddons = isVariation ? (item as VariationItem).baseItem.has_addons : (item as MenuItem).has_addons;
@@ -200,7 +201,7 @@ export default function CategoryModal({
                     <h3 className="font-semibold text-gray-900 mb-2">{displayName}</h3>
                     {isMafim ? (
                       <p className="text-sm font-bold text-blue-600 mb-2">
-                        4.5 ₪ \ 8.30 ₪
+                        {formatPrice(PASTRY_PRICE_SMALL)} ₪ \ {formatPrice(PASTRY_PRICE_LARGE)} ₪
                       </p>
                     ) : (
                       <p className="text-lg font-bold text-blue-600 mb-2">

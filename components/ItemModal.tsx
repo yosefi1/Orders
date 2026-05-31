@@ -5,6 +5,7 @@ import React from 'react';
 import Image from 'next/image';
 
 import { MenuItem } from '@/types/menu';
+import { formatPrice, getPastryPrice } from '@/lib/prices';
 
 interface ItemModalProps {
   item: MenuItem;
@@ -102,7 +103,7 @@ export default function ItemModal({ item, isOpen, onClose, onAdd, preSelectedVar
           <div className="mb-4">
             <span className="text-xl font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded inline-block">
               {item.category === 'מאפים' && selectedVariation
-                ? (selectedVariation === 'קטן' ? '4.50' : '8.30')
+                ? formatPrice(getPastryPrice(selectedVariation))
                 : item.category === 'מאפים'
                 ? 'בחר גודל'
                 : item.price.toFixed(2)} ₪
@@ -134,7 +135,7 @@ export default function ItemModal({ item, isOpen, onClose, onAdd, preSelectedVar
                       <span className="text-lg font-semibold">{variation}</span>
                     </div>
                     <span className="text-lg font-bold text-blue-600">
-                      {variation === 'קטן' ? '4.50' : '8.30'} ₪
+                      {formatPrice(getPastryPrice(variation))} ₪
                     </span>
                   </label>
                 ))}

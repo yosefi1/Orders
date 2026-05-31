@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
+import { getPastryPrice } from '@/lib/prices';
 
 const MIN_ORDER_AMOUNT = 24;
 
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
         
         // Handle special pricing for מאפים based on variation
         if (dbItem.category === 'מאפים' && item.selectedVariation) {
-          finalPrice = item.selectedVariation === 'קטן' ? 4.50 : 8.30;
+          finalPrice = getPastryPrice(item.selectedVariation);
         }
         
         if (originalPrice !== finalPrice) {
