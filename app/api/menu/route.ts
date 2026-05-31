@@ -1,5 +1,18 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@/lib/db';
+import { getDatabaseUrl, sql } from '@/lib/db';
+
+// Always read fresh prices from the database (no static/edge cache)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const MENU_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate',
+  Pragma: 'no-cache',
+};
+
+function menuResponse(data: unknown) {
+  return NextResponse.json(data, { headers: MENU_CACHE_HEADERS });
+}
 
 // Mock data for development when database is not set up
 const MOCK_MENU_ITEMS = [
@@ -190,10 +203,10 @@ const MOCK_MENU_ITEMS = [
 
 export async function GET() {
   try {
-    // If no DATABASE_URL, use mock data immediately
-    if (!process.env.DATABASE_URL) {
+    // If no database URL, use mock data immediately
+    if (!getDatabaseUrl()) {
       console.log('No DATABASE_URL found, using mock data');
-      return NextResponse.json(MOCK_MENU_ITEMS);
+      return menuResponse(MOCK_MENU_ITEMS);
     }
 
     // Try to get data from database
@@ -212,16 +225,16 @@ export async function GET() {
         addons: item.addons ? (typeof item.addons === 'string' ? JSON.parse(item.addons) : item.addons) : item.addons,
         variations: item.variations ? (typeof item.variations === 'string' ? JSON.parse(item.variations) : item.variations) : item.variations,
       }));
-      return NextResponse.json(parsed);
+      return menuResponse(parsed);
     }
     
     // If database is empty or not set up, use mock data
     console.log('Database is empty, using mock data');
-    return NextResponse.json(MOCK_MENU_ITEMS);
+    return menuResponse(MOCK_MENU_ITEMS);
   } catch (error: any) {
     console.error('Database error, using mock data:', error.message);
     // If database connection fails, use mock data
-    return NextResponse.json(MOCK_MENU_ITEMS);
+    return menuResponse(MOCK_MENU_ITEMS);
   }
 }
 

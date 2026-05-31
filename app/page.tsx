@@ -38,7 +38,7 @@ export default function Home() {
 
   const fetchMenuItems = async () => {
     try {
-      const response = await fetch('/api/menu');
+      const response = await fetch('/api/menu', { cache: 'no-store' });
       const data = await response.json();
       
       if (Array.isArray(data)) {

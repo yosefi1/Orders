@@ -1,10 +1,16 @@
 import { neon, NeonQueryFunction } from '@neondatabase/serverless';
 
-// Only create sql client if DATABASE_URL exists
+function getDatabaseUrl(): string | undefined {
+  return process.env.DATABASE_URL || process.env.POSTGRES_URL;
+}
+
+// Only create sql client if a database URL exists
 let sql: NeonQueryFunction<false, false>;
 
-if (process.env.DATABASE_URL) {
-  sql = neon(process.env.DATABASE_URL);
+const databaseUrl = getDatabaseUrl();
+
+if (databaseUrl) {
+  sql = neon(databaseUrl);
 } else {
   // Create a mock sql function that throws an error
   // This will be caught in the API routes and they'll use mock data
@@ -18,5 +24,5 @@ if (process.env.DATABASE_URL) {
   }) as unknown as NeonQueryFunction<false, false>;
 }
 
-export { sql };
+export { sql, getDatabaseUrl };
 
